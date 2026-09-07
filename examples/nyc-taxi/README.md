@@ -20,6 +20,17 @@ docker compose ps
 
 Follow the [walkthrough](../../weeks/02-postgresql-and-ingestion/part-2-postgres-and-pgadmin.md) for verification queries, persistence, and troubleshooting.
 
+### What does `docker compose config --quiet` do?
+
+It checks whether the Compose configuration is valid without starting any containers. Docker reads `compose.yaml`, substitutes values from `.env`, and checks the resulting configuration. `--quiet` suppresses the configuration that Docker would otherwise print.
+
+- **No output:** validation passed.
+- **An error message:** something needs fixing, such as invalid YAML or a required variable missing from `.env`. Fix it before starting the services.
+
+This command does not verify that passwords work, ports are available, or applications will start successfully.
+
+### Connections and storage
+
 PostgreSQL is accessible within the Compose network; its port is not published on the host. pgAdmin is published only on the local loopback interface. This lab uses an administrative PostgreSQL account for learning; deployment environments need separately scoped application accounts.
 
 Stop the services and remove their containers with `docker compose down`. Named volumes retain the database and pgAdmin settings. The walkthrough explains an optional destructive reset separately.
