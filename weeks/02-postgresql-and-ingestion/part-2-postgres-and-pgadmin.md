@@ -64,9 +64,24 @@ flowchart LR
 - `healthcheck` asks PostgreSQL whether it is accepting connections. It does not prove that a particular password works or that data has been loaded.
 - `depends_on` with `service_healthy` delays pgAdmin startup until PostgreSQL passes that readiness check.
 
-Compose creates a network and makes the service name `postgres` resolvable inside it. We do not need to publish PostgreSQL's port on the laptop for pgAdmin to connect.
+### Two connections, two addresses
 
-**Discuss:** Why does the browser use `localhost`, while pgAdmin uses `postgres` to reach the database?
+You will use your usual web browser on your laptop—for example Firefox, Chrome, Edge, or Safari—to open pgAdmin. The browser displays the interface; the pgAdmin application runs in its Docker container.
+
+There are two separate connections:
+
+| Connection | Address used | What happens |
+|---|---|---|
+| Your laptop's browser → pgAdmin | `http://localhost:8085` | The browser contacts port `8085` on your laptop. Docker forwards that connection to port `80` in the pgAdmin container. |
+| pgAdmin container → PostgreSQL container | Host `postgres`, port `5432` | pgAdmin connects across the Compose network to the database service named `postgres`. |
+
+**`localhost` means “this network environment.”** For the browser running on your laptop, it refers to the laptop itself. Inside the pgAdmin container, it refers to that container's own network environment. The same name therefore refers to different places depending on where the connecting program runs.
+
+The `ports` entry in our configuration makes the first connection possible. With the default settings, `127.0.0.1:8085:80` publishes the container's web port `80` on the laptop's local loopback address, port `8085`. You will open that address in step 4, after starting the services.
+
+For the second connection, Compose provides a shared network where service names act as hostnames. `postgres` is the name we gave the database service in `compose.yaml`; it is how pgAdmin locates that container. We do not need to publish PostgreSQL's port on the laptop for this connection.
+
+**Discuss:** If you entered `localhost` as the database host in pgAdmin, where would pgAdmin try to connect? Use the diagram to explain your answer.
 
 ## 3. Start the services
 
