@@ -1,0 +1,11 @@
+[project]
+name = "deng-nyc-taxi"
+version = "0.1.0"
+description = "DENG source inspection and transactional PostgreSQL ingestion lab"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "pandas>=2.3,<3",
+    "pyarrow>=22,<23",
+    "sqlalchemy>=2.0,<2.1",
+    "psycopg[binary]>=3.2,<4",
+]

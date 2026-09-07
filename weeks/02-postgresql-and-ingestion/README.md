@@ -14,6 +14,8 @@ This week, we will turn a published data file into a table that we can inspect a
 
 ## Before the session
 
+Complete [Week 2 — Downloads before class](../../preparation/week-02.md) on the laptop you will bring. This preparation is separate from the concepts and exercises below.
+
 Read this introduction before the practical exercise. You do not need previous experience with PostgreSQL or pgAdmin. Basic familiarity with Python variables and functions will help.
 
 Think back to the data-engineering lifecycle: sources, ingestion, storage, transformation, and serving. We will implement a small part of that lifecycle on our own computers.
@@ -65,20 +67,6 @@ For illustration, a simplified table could look like this. These rows are fictio
 
 Tables can be related through shared identifiers. Later, a taxi-zone lookup table can connect a zone ID to a readable location name.
 
-### What is SQL?
-
-**SQL** is a language for working with relational data. You describe the result you want, and PostgreSQL executes the query.
-
-For example, if our loaded table were named `taxi_trips`, this query would count its rows:
-
-```sql
-SELECT COUNT(*) AS trip_count
-FROM taxi_trips;
-```
-
-`FROM` identifies the table, `COUNT(*)` counts rows, and `AS` names the result column. This is an illustrative query for after a table has been created and loaded.
-
-A count tells us how many rows are present. We still need to compare it with the input and inspect the values before concluding that ingestion succeeded.
 
 ### What is pgAdmin?
 
@@ -172,6 +160,9 @@ Discuss with a partner:
 
 ## Practical exercise
 
+- [Part 2 — PostgreSQL and pgAdmin](part-2-postgres-and-pgadmin.md)
+- [Part 3 — Python ingestion](part-3-python-ingestion.md) — draft; runtime validation pending.
+
 The practical goal is to load a selected monthly trip file into a local PostgreSQL table and inspect it through pgAdmin. We will work through these checkpoints:
 
 | Checkpoint | Evidence to collect |
@@ -182,7 +173,7 @@ The practical goal is to load a selected monthly trip file into a local PostgreS
 | Inspect the result | Find the table, inspect its column types, and query a few rows. |
 | Verify the load | Compare input and loaded row counts; investigate missing or unexpected values. |
 
-Start with [Part 2: PostgreSQL and pgAdmin](part-2-postgres-and-pgadmin.md) to run the database environment and verify your connection. The Python ingestion steps will follow in a later part.
+
 
 ## Connection to the semester project
 

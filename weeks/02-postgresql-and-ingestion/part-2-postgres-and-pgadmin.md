@@ -87,17 +87,21 @@ For the second connection, Compose provides a shared network where service names
 
 ```sh
 docker compose config --quiet
-docker compose up -d --wait
+docker compose up -d 
 docker compose ps
 ```
 
-The validation command prints nothing on success. The first startup downloads the images and initialises storage. `-d` leaves the services running in the background. `--wait` waits for running or healthy services; PostgreSQL should appear healthy and pgAdmin running. pgAdmin's web interface may take a little longer to become available.
+`docker compose config --quiet` checks whether the Compose configuration is valid without starting any containers. It reads `compose.yaml`, substitutes values from `.env`, and checks the resulting configuration. `--quiet` suppresses the configuration that Docker would otherwise print.
 
-To inspect startup messages:
+- **No output:** validation passed.
+- **An error message:** something needs fixing, such as invalid YAML or a required variable missing from `.env`.
 
-```sh
-docker compose logs --tail=30 postgres pgadmin
-```
+This checks configuration only. It does not verify that passwords work, ports are available, or applications will start successfully. Resolve any validation errors before running the startup command.
+
+
+
+
+
 
 Do not share unreviewed logs or configuration output containing credentials.
 
@@ -139,7 +143,18 @@ The result should be `ny_taxi`, unless you deliberately selected another databas
 
 These queries verify that pgAdmin can submit SQL and receive results. No taxi table exists yet.
 
-## 6. Observe persistence
+## 6. Exercise: remove containers with and without volumes
+
+Allow about 10 minutes. A **named volume** is a storage area managed by Docker that exists independently of a container. Our example has two:
+
+| Volume | What it stores |
+|---|---|
+| `postgres_data` | PostgreSQL's database files, including your tables and rows. |
+| `pgadmin_data` | pgAdmin's account and saved server connection settings. |
+
+We will compare what happens when these storage areas are kept or deleted. Use the same example directory and Compose project throughout.
+
+### Prepare a test row
 
 Create one small learning table in the Query Tool. This is a separate scratch table for this activity:
 
@@ -156,7 +171,11 @@ ON CONFLICT (id) DO NOTHING;
 SELECT * FROM connection_check;
 ```
 
-Ensure **Auto commit** is enabled in the Query Tool, or commit the transaction before continuing. The result should contain one row.
+Before running the SQL, open the dropdown beside **Execute script** in the Query Tool and check **Auto commit?**. This automatically confirms successful database changes. If you already ran the SQL with Auto commit disabled, execute `COMMIT;` before continuing. The query should display one row containing `My database connection works`.
+
+### Experiment A: keep the volumes
+
+**Predict:** Will the table and saved pgAdmin connection survive if we remove the containers but keep their storage?
 
 In the terminal, remove the containers and start them again:
 
@@ -171,11 +190,55 @@ Reconnect in pgAdmin, reopen the Query Tool if needed, and run:
 SELECT * FROM connection_check;
 ```
 
-The row should still exist. The named volume preserved the database files when the container was removed. pgAdmin's separate volume preserves its saved connection settings. Neither volume is a backup.
+Record whether the test row is returned and whether pgAdmin still lists your saved server connection.
+
+**Expected result:** The table and its row are still available, and pgAdmin retains the saved connection.
+
+**Why:** `docker compose down` removed the containers but kept both named volumes. The next startup attached those existing storage areas to new containers. PostgreSQL reopened its database files, while pgAdmin reopened its account and connection settings.
+
+### Experiment B: delete the volumes
+
+**This experiment deletes all database tables and saved pgAdmin settings in this Compose project.** Only do this in the disposable lab with no data you need to keep. If you have added useful data, skip this experiment until you have a separate disposable environment.
+
+**Predict:** What will happen to the test table and saved connection if we also delete their storage?
+
+From `examples/nyc-taxi`, run:
+
+```sh
+docker compose down -v
+docker compose up -d --wait
+```
+
+`-v` is short for `--volumes`. In our configuration, it removes both named volumes as well as the containers.
+
+1. Refresh the pgAdmin browser page and sign in using the pgAdmin credentials in `.env`. Allow a moment for the web interface to start.
+2. Observe that the saved server connection is gone. Register `DENG local` again using the settings in step 4.
+3. Open a new Query Tool connected to `ny_taxi` and run:
+
+```sql
+SELECT * FROM connection_check;
+```
+
+**Expected result:** PostgreSQL reports that relation `connection_check` does not exist. “Relation” here means the table: the table itself is missing, rather than simply containing no rows.
+
+**Why:** Deleting `postgres_data` removed the old database files. Startup created fresh storage and initialised a new `ny_taxi` database using `.env`. It did not recreate the table you had created manually. Deleting `pgadmin_data` also removed pgAdmin's saved settings, which is why you had to register the server again.
+
+Rerun the SQL under **Prepare a test row** to recreate the table before finishing.
+
+### Compare the results
+
+| Command before startup | Containers removed? | Named volumes removed? | What is available after startup? |
+|---|---|---|---|
+| `docker compose down` | Yes | No | Existing table, row, and pgAdmin settings. |
+| `docker compose down -v` | Yes | Yes | Fresh database and pgAdmin setup; no test table. |
+
+**Explain to your partner:** Why does replacing a container preserve the table in experiment A, while experiment B removes it?
+
+A volume contains the **working data**, not a separate backup. If you accidentally delete a table, that deletion changes the database files in the volume too. A backup is a separate recoverable copy that could restore data after such a mistake.
 
 ## 7. Finish and record your checkpoint
 
-Record the two verification query results and the persistence result. Explain to your partner:
+Record the two verification query results and your observations from experiments A and B (or note if you skipped B). Explain to your partner:
 
 - which component executed the SQL;
 - why the database hostname was `postgres`;

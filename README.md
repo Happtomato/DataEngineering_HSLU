@@ -27,6 +27,8 @@ By the end of the module, you should be able to:
 
 ## Weekly materials
 
+- [Downloads before class — weekly checklists](preparation/README.md)
+
 - [Week 2 — PostgreSQL & Data Ingestion](weeks/02-postgresql-and-ingestion/README.md)
 
 ## Recurring example
