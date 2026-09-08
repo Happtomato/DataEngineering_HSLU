@@ -278,28 +278,6 @@ After both loads, expect two result rows, one per source month. Compare their co
 
 Run January again and repeat the query. January's count should remain the same for the same file; February should still be present with its earlier count. This replaces a month's records on rerun rather than duplicating them. It does not attempt to identify and remove duplicate records already present in the source.
 
-### 5. Explain a failure
-
-The delete and all inserts for **one month** form one transaction. A write failure restores that month's earlier rows. Previously completed months remain committed. The job stops on the error; fix it and rerun the affected month rather than downloading and loading every month again.
-
-A database lock lasts for the month's load and prevents simultaneous jobs from changing the table at the same time. For this exercise, run one loader at a time and close unfinished pgAdmin transactions.
-
-**Finish with:** two complete source months in PostgreSQL, matching row counts, and an explanation of why the batch loop must append while the month replacement happens once outside that loop.
-
-**Discuss:** Why do we label rows with their source-file month instead of deleting rows based on their pickup timestamps? What would you need to consider if TLC published a corrected version of a file already saved in `data/`?
-
-## Troubleshooting and completion
-
-- **Old code runs:** rebuild with `docker compose build ingest` after editing Python or SQL files.
-- **File not found:** check the filename and make sure the downloaded file is in `examples/nyc-taxi/data`. The loader does not download it.
-- **Connection fails:** revisit Part 2's service status and credentials. Changing `.env` does not reset an existing database password.
-- **Required source field/type changed:** inspect the source again and decide on a deliberate schema update. The loader will not silently invent columns or migrate existing SQL tables.
-- **`TypeError` during loading:** inspect nullable integer fields for fractional or incompatible values. Earlier successful data is retained.
-- **Queries or loads wait:** ensure pgAdmin does not hold an unfinished transaction; the loader uses a 10-second lock timeout.
-- **Step 7 reports an HTTP error:** confirm that TLC has published the requested yellow taxi file. The job stops at that month; earlier successful months remain loaded.
-- **Step 7 reuses an outdated local file:** replace that month's prepared file with the intended version, or move it out of `data/` to let the script download it again. Existing local files are reused without checking whether TLC has revised them.
-
-Keep your source observations, count results, and rerun evidence. For your project, explain whether replacing the entire dataset would be acceptable as its volume grows. Incremental loading and scheduling follow in later weeks.
 
 ## References
 
@@ -308,3 +286,5 @@ Keep your source observations, count results, and rerun evidence. For your proje
 - [pandas database writes](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html)
 - [SQLAlchemy connections and transactions](https://docs.sqlalchemy.org/en/20/core/connections.html)
 - [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/)
+
+The code and explanations were written independently for DENG.
