@@ -34,7 +34,7 @@ def load_trips(file_path, engine):
     # 4. Replace its rows and insert our subset in one transaction.
     with engine.begin() as connection:
         connection.execute(text("SET LOCAL lock_timeout = '10s'"))
-        connection.execute(text("TRUNCATE TABLE public.taxi_trips"))
+        #connection.execute(text("TRUNCATE TABLE public.taxi_trips"))
         trips.to_sql("taxi_trips", connection, schema="public",
                      if_exists="append", index=False, chunksize=1_000)
     print(f"Loaded {len(trips):,} rows into taxi_trips.")

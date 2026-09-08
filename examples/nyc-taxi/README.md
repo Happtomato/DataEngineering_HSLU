@@ -4,7 +4,7 @@ Before class: [download checklist](../../preparation/week-02.md). It preloads th
 
 [Week 2 introduction](../../weeks/02-postgresql-and-ingestion/README.md) · [Part 2 walkthrough](../../weeks/02-postgresql-and-ingestion/part-2-postgres-and-pgadmin.md)
 
-This example provides PostgreSQL and pgAdmin. [Part 3: Python ingestion](../../weeks/02-postgresql-and-ingestion/part-3-python-ingestion.md) and its original Python scripts are now drafted. **The ingestion image is not ready to run yet:** the first build identified a missing Linux dependency in the lock file. See [validation status](VALIDATION.md).
+This example provides PostgreSQL and pgAdmin. [Part 3: Python ingestion](../../weeks/02-postgresql-and-ingestion/part-3-python-ingestion.md) and its original Python scripts are now drafted. The ingestion image build has been verified after correcting the dependency lock. Full database-loading validation remains pending.
 
 Requirements: a running Docker engine and Docker Compose v2 with support for `up --wait`. Docker Desktop includes both. Use a terminal in this directory.
 
