@@ -2,6 +2,7 @@
 !requirements.lock
 !inspect_source.py
 !ingest.py
+!ingest_months.py
 !sql/
 !sql/**
 !tests/

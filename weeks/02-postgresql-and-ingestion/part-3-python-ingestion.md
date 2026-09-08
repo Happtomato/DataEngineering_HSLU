@@ -172,7 +172,7 @@ The file path is the only argument. The script already limits the read to 10,000
 
 Python connects to host `postgres`, port `5432`, using the database credentials supplied by Compose. It does not connect through pgAdmin. On completion the Python container exits; PostgreSQL and pgAdmin remain available.
 
-**Checkpoint:** Explain why Python can finish while you continue querying the loaded data.
+
 
 ## Step 5 — Verify the data through pgAdmin
 
@@ -201,6 +201,93 @@ The clear and insert operations share one **transaction** through `with engine.b
 
 **Checkpoint:** Explain why a successful rerun does not double the number of rows.
 
+## Step 7 — Download and load several complete months
+
+**Goal:** extend the first-batch example to all records, then repeat the process for several monthly files. Use [ingest_months.py](../../examples/nyc-taxi/ingest_months.py), a separate script that leaves the earlier `taxi_trips` exercise alone.
+
+Allow about 20 minutes for reading and discussion, plus loading time. Each complete month contains millions of records; start with one month, and add a second while you discuss the design. Loading can take several minutes or longer depending on your laptop.
+
+### 1. Follow the two loops
+
+Open the script and find:
+
+- The **month loop** in `main()`: obtain a file and load it for each requested month.
+- The **batch loop** in `load_month()`: read every batch from that file, not just the first batch.
+
+```python
+for batch in source.iter_batches(batch_size=10_000, columns=list(columns)):
+    # Prepare and append this batch.
+```
+
+Each batch contains up to 10,000 records. The final batch can be smaller. `chunksize=1000` still controls the smaller groups written to PostgreSQL; it does not limit how many records we read overall.
+
+`download_month()` constructs the official TLC URL from the year and month. For example, year `2024` and month `2` select `yellow_tripdata_2024-02.parquet`. If that exact filename is already in your prepared `data/` folder, the script reuses it. Otherwise it downloads it automatically to temporary storage for that month's run. Newly downloaded temporary files are deleted after the month finishes; files in `data/` are kept.
+
+### 2. Understand where the rows go
+
+The script creates a separate table, `public.taxi_trips_monthly`, using [schema-monthly.sql](../../examples/nyc-taxi/sql/schema-monthly.sql). It contains the same trip fields plus **`source_month`**, which records the month of the source file.
+
+For example, all records from the January 2024 file receive `2024-01-01`. We use the first day as a simple way to store a month in a SQL `DATE` column. This is the file's month, not a claim about the actual pickup date: some source records can have timestamps outside that month.
+
+Before loading January, the script deletes only previously loaded January rows from this table. February and other months stay in place. There is no full-table `TRUNCATE` in this script.
+
+**Predict:** What would happen to January's data if we cleared the entire table before loading February? What would happen if we deleted January inside every batch iteration?
+
+### 3. Choose a year and months, then run
+
+From `examples/nyc-taxi`, rebuild the image to include the new script (preferably before class):
+
+```sh
+docker compose build ingest
+```
+
+Ensure the `data/` directory exists, even if you want automatic downloads, because the Compose service mounts it. Start with January:
+
+```sh
+docker compose run --rm ingest ingest_months.py --year 2024 --months 1
+```
+
+Then add February:
+
+```sh
+docker compose run --rm ingest ingest_months.py --year 2024 --months 2
+```
+
+To request both in one run:
+
+```sh
+docker compose run --rm ingest ingest_months.py --year 2024 --months 1 2
+```
+
+`--year` selects one year. `--months` accepts a space-separated list of month numbers from 1 to 12. To load every available file for a complete year, list `1 2 3 4 5 6 7 8 9 10 11 12`. There is no need to request a whole year for this exercise. Files must have been published by TLC; a valid month number does not guarantee an available file.
+
+Watch the progress: records written should keep increasing beyond 10,000. The final `Committed` message reports the month's complete count. The script checks that the database count for that month matches the file's row count before confirming the load.
+
+### 4. Verify and rerun
+
+In pgAdmin's Query Tool for `ny_taxi`, run:
+
+```sql
+SELECT source_month, COUNT(*) AS loaded_rows
+FROM public.taxi_trips_monthly
+GROUP BY source_month
+ORDER BY source_month;
+```
+
+After both loads, expect two result rows, one per source month. Compare their counts with the script's final messages.
+
+Run January again and repeat the query. January's count should remain the same for the same file; February should still be present with its earlier count. This replaces a month's records on rerun rather than duplicating them. It does not attempt to identify and remove duplicate records already present in the source.
+
+### 5. Explain a failure
+
+The delete and all inserts for **one month** form one transaction. A write failure restores that month's earlier rows. Previously completed months remain committed. The job stops on the error; fix it and rerun the affected month rather than downloading and loading every month again.
+
+A database lock lasts for the month's load and prevents simultaneous jobs from changing the table at the same time. For this exercise, run one loader at a time and close unfinished pgAdmin transactions.
+
+**Finish with:** two complete source months in PostgreSQL, matching row counts, and an explanation of why the batch loop must append while the month replacement happens once outside that loop.
+
+**Discuss:** Why do we label rows with their source-file month instead of deleting rows based on their pickup timestamps? What would you need to consider if TLC published a corrected version of a file already saved in `data/`?
+
 ## Troubleshooting and completion
 
 - **Old code runs:** rebuild with `docker compose build ingest` after editing Python or SQL files.
@@ -209,6 +296,8 @@ The clear and insert operations share one **transaction** through `with engine.b
 - **Required source field/type changed:** inspect the source again and decide on a deliberate schema update. The loader will not silently invent columns or migrate existing SQL tables.
 - **`TypeError` during loading:** inspect nullable integer fields for fractional or incompatible values. Earlier successful data is retained.
 - **Queries or loads wait:** ensure pgAdmin does not hold an unfinished transaction; the loader uses a 10-second lock timeout.
+- **Step 7 reports an HTTP error:** confirm that TLC has published the requested yellow taxi file. The job stops at that month; earlier successful months remain loaded.
+- **Step 7 reuses an outdated local file:** replace that month's prepared file with the intended version, or move it out of `data/` to let the script download it again. Existing local files are reused without checking whether TLC has revised them.
 
 Keep your source observations, count results, and rerun evidence. For your project, explain whether replacing the entire dataset would be acceptable as its volume grows. Incremental loading and scheduling follow in later weeks.
 
@@ -219,5 +308,3 @@ Keep your source observations, count results, and rerun evidence. For your proje
 - [pandas database writes](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html)
 - [SQLAlchemy connections and transactions](https://docs.sqlalchemy.org/en/20/core/connections.html)
 - [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/)
-
-The code and explanations were written independently for DENG. Zoomcamp is a supporting architectural reference; no Zoomcamp code was copied.

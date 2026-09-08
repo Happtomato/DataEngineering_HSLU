@@ -200,4 +200,4 @@ Keep your diagram and verification observations for the next practical session.
 - [pgAdmin overview](https://www.pgadmin.org/)
 - [Docker overview](https://docs.docker.com/get-started/docker-overview/)
 - [Docker Compose application model](https://docs.docker.com/compose/intro/compose-application-model/)
-- [Zoomcamp Docker and SQL material](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/01-docker-terraform/docker-sql) — supporting practical reference. This DENG introduction and its diagrams were written independently; no Zoomcamp code is reproduced here.
+- [Zoomcamp Docker and SQL material](https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/01-docker-terraform/docker-sql)

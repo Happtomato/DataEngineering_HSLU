@@ -128,7 +128,13 @@ The corrected dependency lock and image build were verified on 8 September 2026.
 
 The simplified ingestion script now reuses the downloaded file through a read-only folder mount. Its image build is verified; database-loading validation remains pending. Keep the file in `examples/nyc-taxi/data` for both inspection and loading.
 
-## If a download fails
+## Extra preparation for Part 3, Step 7
+
+Before the multi-month exercise, also download [February 2024 yellow taxi records](https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-02.parquet) into `examples/nyc-taxi/data/`, keeping the filename `yellow_tripdata_2024-02.parquet`. Keep January's file there too. Confirm both browser downloads have finished and both files have a nonzero size. Do not load them into PostgreSQL before class.
+
+Rebuild the ingestion image using the command above so it includes `ingest_months.py`. The new script will reuse these local files. If one is missing, it downloads it during the exercise, which requires internet access and extra waiting. Loading complete months also takes longer than loading the initial 10,000-row subset, even when downloads are prepared.
+
+## Download troubleshooting
 
 Check your internet connection and that Docker is running, then retry the download command. It can reuse completed image layers. If it still fails, report the command and error before class, along with your operating system. Leave passwords and `.env` contents out of the report.
 

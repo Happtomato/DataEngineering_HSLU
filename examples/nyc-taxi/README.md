@@ -37,7 +37,7 @@ PostgreSQL is accessible within the Compose network; its port is not published o
 
 Stop the services and remove their containers with `docker compose down`. Named volumes retain the database and pgAdmin settings. The walkthrough explains an optional destructive reset separately.
 
-Configuration written independently for DENG. References: [PostgreSQL image](https://hub.docker.com/_/postgres), [pgAdmin container deployment](https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html), and [Compose readiness dependencies](https://docs.docker.com/compose/how-tos/startup-order/).
+References: [PostgreSQL image](https://hub.docker.com/_/postgres), [pgAdmin container deployment](https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html), and [Compose readiness dependencies](https://docs.docker.com/compose/how-tos/startup-order/).
 
 ### What does `docker compose build ingest` do?
 
@@ -48,6 +48,14 @@ The command prepares a Docker **image** by starting with Python, installing the 
 After the image is built successfully, `docker compose run --rm ingest ingest.py data/yellow_tripdata_2024-01.parquet` creates a container from it and runs the Python loader. Rebuild after editing the scripts so the image contains your changes.
 
 ### Ingestion file guide
+
+For complete monthly files, see [Part 3, Step 7](../../weeks/02-postgresql-and-ingestion/part-3-python-ingestion.md#step-7--download-and-load-several-complete-months). After rebuilding the image, run:
+
+```sh
+docker compose run --rm ingest ingest_months.py --year 2024 --months 1 2
+```
+
+This separate script reuses prepared files or downloads missing months, reads all batches, and loads `taxi_trips_monthly`. Reruns replace only the selected source months; the earlier `taxi_trips` table is untouched. See [ingest_months.py](ingest_months.py) and [schema-monthly.sql](sql/schema-monthly.sql).
 
 If you already created `taxi_trips` from the earlier draft containing an added row-number column, remove just that obsolete column once in pgAdmin before using the updated loader:
 
