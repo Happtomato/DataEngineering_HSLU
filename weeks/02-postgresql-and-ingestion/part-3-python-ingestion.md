@@ -8,7 +8,7 @@ First, we will understand a downloaded taxi file. Later steps define a PostgreSQ
 
 **Step 1 runs locally with Python.** It needs no Docker, Compose configuration, database, or `.env`. Complete [the advance preparation](../../preparation/week-02.md) first: install the Parquet reader and download the data file.
 
-The later Docker ingestion implementation is still a draft with a dependency-lock issue; see [validation status](../../examples/nyc-taxi/VALIDATION.md). That issue does not affect this separate local inspection script.
+The later Docker ingestion image now builds successfully. Full database-loading validation remains pending; Step 1 uses a separate local inspection script.
 
 ## Step 1 — Open the file and understand its records
 
@@ -46,7 +46,7 @@ The script prints:
 - column names and data types;
 - the first five records, with each field's name and value.
 
-It reads the local file and leaves it unchanged. It does not download, delete, or load anything into PostgreSQL. Running it again uses the same file. The inspection script is independent of the database loader.
+It reads the local file and leaves it unchanged. It does not download, delete, or load anything into PostgreSQL. Running it again uses the same file. There is no need to open `source.py` for this step; that file belongs to the later ingestion code.
 
 **Parquet** is the file format. **PyArrow** is the Python library that opens it. A Parquet file is binary, so a text editor will not display it as a readable table.
 
@@ -69,7 +69,7 @@ If you downloaded green taxi data instead, the script can inspect that file too;
 
 ### 1. Read and discuss the table definition
 
-Open [sql/schema.sql](../../examples/nyc-taxi/sql/schema.sql). It contains the statement `CREATE TABLE IF NOT EXISTS public.taxi_trips (...)`.
+Open [sql/schema.sql](../../examples/nyc-taxi/sql/schema.sql). Focus on the first statement, `CREATE TABLE IF NOT EXISTS public.taxi_trips (...)`. 
 
 Match the source columns to the destination columns below. Discuss why pickup time needs a timestamp, passenger count needs a whole number, and trip distance needs a number that can contain a fractional part.
 
@@ -91,7 +91,7 @@ Business fields accept `NULL`, meaning a missing value. Suspicious negative amou
 1. Start PostgreSQL and pgAdmin as described in [Part 2](part-2-postgres-and-pgadmin.md), if they are not already running.
 2. In pgAdmin, select the `ny_taxi` database and open **Tools → Query Tool**.
 3. Enable **Auto commit?** in the dropdown beside **Execute script**, so the table creation is committed automatically.
-4. Copy the `CREATE TABLE` statement from `schema.sql`, through its closing `);`, into the Query Tool and execute it.
+4. Copy only the first `CREATE TABLE` statement from `schema.sql`, through its closing `);`, into the Query Tool and execute it.
 
 `CREATE TABLE` defines the columns and their types. `public` is the schema namespace containing the table. `IF NOT EXISTS` allows the statement to be run again without recreating an existing table; it does not change an existing table's structure or remove its data.
 
@@ -113,119 +113,111 @@ SELECT COUNT(*) AS row_count FROM public.taxi_trips;
 
 The count query returns one result row containing `0`. That result row reports the count; it is not a taxi record.
 
-Refresh **Schemas → public → Tables** in pgAdmin and find `taxi_trips`. Expand its columns to inspect their types. If you have already loaded taxi data in a previous run, the table may contain rows; this creation statement leaves them intact. Do not delete existing data merely to reproduce the empty-table result.
-
+Refresh **Schemas → public → Tables** in pgAdmin and find `taxi_trips`. Expand its columns to inspect their types. 
 ### What you have achieved
 
 You now have an **empty destination table whose columns and types you can explain** (or an existing table retained from an earlier run). The source file remains unchanged, and this step has not loaded any trip records.
 
-Step 3 explains the Python code that will prepare and write records; Step 4 runs it. The loader expects this table to exist; it will not create it for you.
+Step 3 explains the Python code that will prepare and write records; Step 4 runs it. The loader expects the table you created in Step 2 to exist.
 
 **Checkpoint:** Show your table and row count to your partner. Explain one source-to-destination column mapping, one type choice, and why a missing passenger count should not automatically become zero.
 
-## Step 3 — Read the short Python loader
+## Step 3 — Follow the Python loading code
 
-**Goal:** understand how Python moves records from the file into the table you created.
+Read [ingest.py](../../examples/nyc-taxi/ingest.py) from top to bottom. `load_trips()` reads a small subset from the local file, renames its columns, and writes the rows into PostgreSQL. The block at the bottom reads the file-path argument and configures the database connection using environment variables.
 
-Open [ingest.py](../../examples/nyc-taxi/ingest.py). Follow the four numbered comments:
+The Python libraries each have a role:
 
-1. **Read:** open the saved yellow taxi file and read its first 10,000 records, or all records if there are fewer. This keeps the exercise small without reading the whole month into memory.
-2. **Prepare:** select and rename the fields to match our SQL table. Keep missing integer values as missing rather than replacing them with zero.
-3. **Connect:** use the PostgreSQL connection configured from environment variables.
-4. **Write:** clear the teaching table's old rows and insert the selected records.
+- **PyArrow:** reads Parquet metadata and batches.
+- **pandas:** represents each batch as a DataFrame—a table of rows and columns in Python memory.
+- **SQLAlchemy:** manages the PostgreSQL connection and transaction and supports pandas' database writes.
+- **psycopg:** the driver that communicates with PostgreSQL underneath SQLAlchemy.
 
-PyArrow reads Parquet. A pandas **DataFrame** holds the selected records as a table in Python memory. SQLAlchemy and its psycopg driver let Python communicate with PostgreSQL.
+There are two different batch sizes:
 
-`trips.to_sql(...)` writes the DataFrame to our existing table. `index=False` prevents adding pandas' own row index as a database column. `chunksize=1000` sends the selected records in smaller groups.
+- `batch_size=10_000` with `next(...)` reads only the first group of up to **10,000 records** from the file. It does not iterate through the remaining groups.
+- `chunksize=1_000` in `trips.to_sql(...)` sends those selected records to PostgreSQL in groups of **1,000**. It does not reduce the total to 1,000.
 
-The script takes one argument: the local file path. It does not download files, generate identifiers, record metadata, or create tables.
+`if_exists="append"` inserts rows into the table, and `index=False` avoids adding pandas' row index as a column. The script clears the old rows first, so running the complete script again replaces the teaching dataset.
 
-**Checkpoint:** Point to the column mapping and the database write. Explain which part connects the source names from Step 1 to the table names from Step 2.
+**Checkpoint:** Find where the script selects records, renames columns, and writes to PostgreSQL. Explain the difference between the two batch sizes.
 
-## Step 4 — Run the loader
+## Step 4 — Run ingestion through Compose
 
-**Goal:** fill the empty table from Step 2. Complete Part 2's PostgreSQL setup and create `taxi_trips` before continuing.
+Complete Part 2 and create the table in Step 2 first. Use your existing `.env`. This loader runs in Docker and reads the file you downloaded for Step 1. Compose makes your local `data` folder available at `/app/data` inside the container, read-only. Keep the file at `examples/nyc-taxi/data/yellow_tripdata_2024-01.parquet`.
 
-The ingestion Docker image still needs its dependency-lock correction before classroom use; see [validation status](../../examples/nyc-taxi/VALIDATION.md).
-
-From `examples/nyc-taxi`, build the Python image once that issue is resolved:
+Build the ingestion image (or reuse the image built before class):
 
 ```sh
 docker compose build ingest
 ```
 
-Building prepares Python and its libraries. It does not load data. Rebuild after editing the script because the image contains a copy of the code.
+This prepares Python, its libraries, and the loader code inside an image; it does not execute ingestion. Rebuild after editing the loader code.
 
-Start the database environment, then run the loader:
+If you stopped PostgreSQL and pgAdmin after Part 2, start them again:
 
 ```sh
 docker compose up -d --wait
-docker compose run --rm ingest ingest.py data/yellow_tripdata_2024-01.parquet
 ```
 
-The `ingest` service is an on-demand Python environment. Compose makes your `examples/nyc-taxi/data` folder available at `/app/data` inside its container, read-only. The script runs from `/app`, so the supplied relative path finds the same downloaded file you inspected locally. The folder must exist before running the container.
+The `ingest` service uses a Compose **profile** named `tools`, so this ordinary startup runs PostgreSQL and pgAdmin only. Explicitly naming `ingest` in `docker compose run` starts the one-off Python service and its required database dependency.
 
-Python connects to service `postgres` on port `5432`, using the database credentials from `.env`. It does not connect through pgAdmin. No dataset download takes place during ingestion.
-
-For the chosen file, successful completion prints:
-
-```text
-Loaded 10,000 rows into taxi_trips.
-```
-
-The Python container exits afterward. Your source file remains in place, and PostgreSQL stays available for queries.
-
-**Checkpoint:** Explain which file was read and which database table now contains its records.
-
-## Step 5 — Inspect the loaded table
-
-In pgAdmin, open the Query Tool for `ny_taxi` and run:
-
-```sql
-SELECT COUNT(*) FROM public.taxi_trips;
-SELECT * FROM public.taxi_trips LIMIT 10;
-```
-
-Execute each statement separately. The count should match the number printed by Python: 10,000 for this file. The second query displays ten records; SQL does not guarantee the original file order.
-
-The input file contains many more records. This is a first-10,000 subset for learning, not a random sample or the full month. Do not interpret its daily counts as total monthly taxi demand.
-
-Use [sql/verification.sql](../../examples/nyc-taxi/sql/verification.sql) for additional missing-value checks and a simple query grouping loaded records by pickup date.
-
-**Checkpoint:** Show a loaded row and explain why a missing passenger count remains `NULL`.
-
-## Step 6 — Run the loader again
-
-**Goal:** see what a rerun does. Run the same command again:
+Load the first 10,000 records:
 
 ```sh
 docker compose run --rm ingest ingest.py data/yellow_tripdata_2024-01.parquet
 ```
 
-Repeat the SQL count. It should still be 10,000, not 20,000.
+The file path is the only argument. The script already limits the read to 10,000 records; no `--limit` option is supported. For this file, successful completion prints `Loaded 10,000 rows into taxi_trips.`
 
-**Why:** `TRUNCATE TABLE` removes the existing rows while keeping the table definition. Python then writes the selected records again. This replaces the entire teaching dataset; it is not incremental loading.
+Python connects to host `postgres`, port `5432`, using the database credentials supplied by Compose. It does not connect through pgAdmin. On completion the Python container exits; PostgreSQL and pgAdmin remain available.
 
-Both actions are inside `with engine.begin()`, a **transaction**. They are confirmed together when the block finishes successfully. If a database write fails, both actions are undone, preserving the earlier rows. This basic safeguard is included even in our short script.
+**Checkpoint:** Explain why Python can finish while you continue querying the loaded data.
 
-The loader only replaces rows in `taxi_trips`. It leaves `connection_check` and other tables alone. Close or commit unfinished pgAdmin transactions before loading; they can block the table update. The loader stops if it waits more than ten seconds for a database lock.
+## Step 5 — Verify the data through pgAdmin
 
-**Finish with:** a populated table, a count matching Python's output, and an explanation of why a rerun does not double the row count.
+Refresh the tables under `ny_taxi → Schemas → public → Tables`. Open a Query Tool for `ny_taxi` and run the statements in [sql/verification.sql](../../examples/nyc-taxi/sql/verification.sql) separately.
 
-## Troubleshooting
+Check these outcomes:
 
-- **File not found:** confirm the downloaded yellow taxi file is inside `examples/nyc-taxi/data`, with the expected name. Follow the working-directory instructions for each command.
-- **Missing columns:** use yellow taxi data for this loader. Green taxi data has different timestamp field names.
-- **Table does not exist:** complete Step 2 in `ny_taxi` before running the loader.
-- **Old code runs:** rebuild the ingestion image after changes.
-- **Database connection fails:** check Part 2's service status and credentials.
-- **Load waits or times out:** commit or close unfinished Query Tool transactions.
+1. `SELECT COUNT(*) FROM public.taxi_trips;` returns 10,000, matching the number printed by Python.
+2. A preview of ten rows has understandable fields. SQL does not guarantee the original file order.
+3. Quality queries report missing values, reversed timestamps, and negative values. Investigate their meaning before deciding whether to reject them.
+4. The daily query describes only the loaded records. This first-10,000 subset is not a representative sample and does not measure all January taxi demand.
+
+**Checkpoint:** Explain the difference between successfully copying records and deciding that their values are suitable for analysis.
+
+## Step 6 — Run the loader again
+
+Run the same command again:
+
+```sh
+docker compose run --rm ingest ingest.py data/yellow_tripdata_2024-01.parquet
+```
+
+Repeat the SQL count. It should still show 10,000 rows, not 20,000. The script clears `taxi_trips` before inserting the selected records again. It does not change the Part 2 `connection_check` table or the downloaded file.
+
+The clear and insert operations share one **transaction** through `with engine.begin()`: they are confirmed together on success, or undone if a database write fails. The simplified script has no failure-simulation or full-month command-line options.
+
+**Checkpoint:** Explain why a successful rerun does not double the number of rows.
+
+## Troubleshooting and completion
+
+- **Old code runs:** rebuild with `docker compose build ingest` after editing Python or SQL files.
+- **File not found:** check the filename and make sure the downloaded file is in `examples/nyc-taxi/data`. The loader does not download it.
+- **Connection fails:** revisit Part 2's service status and credentials. Changing `.env` does not reset an existing database password.
+- **Required source field/type changed:** inspect the source again and decide on a deliberate schema update. The loader will not silently invent columns or migrate existing SQL tables.
+- **`TypeError` during loading:** inspect nullable integer fields for fractional or incompatible values. Earlier successful data is retained.
+- **Queries or loads wait:** ensure pgAdmin does not hold an unfinished transaction; the loader uses a 10-second lock timeout.
+
+Keep your source observations, count results, and rerun evidence. For your project, explain whether replacing the entire dataset would be acceptable as its volume grows. Incremental loading and scheduling follow in later weeks.
 
 ## References
 
-- [TLC data and dictionaries](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
+- [TLC trip-record data and dictionaries](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
 - [PyArrow Parquet reader](https://arrow.apache.org/docs/python/generated/pyarrow.parquet.ParquetFile.html)
 - [pandas database writes](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html)
-- [SQLAlchemy transactions](https://docs.sqlalchemy.org/en/20/core/connections.html)
+- [SQLAlchemy connections and transactions](https://docs.sqlalchemy.org/en/20/core/connections.html)
+- [Compose profiles](https://docs.docker.com/compose/how-tos/profiles/)
 
-The code and explanations were written independently for DENG.
+The code and explanations were written independently for DENG. Zoomcamp is a supporting architectural reference; no Zoomcamp code was copied.

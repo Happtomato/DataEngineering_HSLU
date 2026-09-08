@@ -267,16 +267,7 @@ The next part will introduce the source file and the Python program that loads i
 | Password authentication failed | Use the PostgreSQL password for the server connection, not the pgAdmin login password. Check whether the volume was initialised with an earlier password. |
 | Editing `.env` did not change an account | Initialisation settings create accounts on first startup with empty storage. Editing `.env` does not change passwords already stored in PostgreSQL or pgAdmin. Use the existing credentials and the application's account-management tools. |
 
-### Optional: completely reset this disposable lab
 
-**This deletes both named volumes: all database tables and saved pgAdmin settings in this Compose project.** Use it only if you deliberately want a fresh lab and have no data to keep. Check that your terminal is in this example directory.
-
-```sh
-docker compose down --volumes
-docker compose up -d --wait
-```
-
-The next startup initialises both applications from your current `.env`; register the server in pgAdmin again.
 
 ## References
 
@@ -284,4 +275,4 @@ The next startup initialises both applications from your current `.env`; registe
 - [pgAdmin container deployment](https://www.pgadmin.org/docs/pgadmin4/latest/container_deployment.html)
 - [Compose startup readiness](https://docs.docker.com/compose/how-tos/startup-order/)
 
-The DENG configuration, instructions, and diagram were written independently.
+

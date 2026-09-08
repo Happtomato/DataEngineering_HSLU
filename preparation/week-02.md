@@ -2,7 +2,7 @@
 
 [All weeks](README.md) · [Week 2 materials](../weeks/02-postgresql-and-ingestion/README.md)
 
-**Status:** Database downloads and local Step 1 preparation are documented. The Docker ingestion build remains pending; see the final section.
+**Status:** Database downloads and local Step 1 preparation are documented. The Docker ingestion image build has also been verified; full database-loading validation remains pending.
 
 **Last updated:** 7 September 2026. **Latest change:** Step 1 now uses a manually downloaded file and local Python, with no Docker.
 
@@ -114,11 +114,19 @@ The inspection script will read this file without deleting or downloading it aga
 
 You do not need to open pgAdmin, register a database, run SQL, or understand Docker networking before class. Those are learning activities in [Part 2](../weeks/02-postgresql-and-ingestion/part-2-postgres-and-pgadmin.md).
 
-## Python ingestion downloads — not yet released
+## Prepare the Python ingestion image
 
-The local inspection in Step 1 uses the downloaded file above and does not need the ingestion image. Do not run the draft ingestion Docker build as a required preparation step yet: its dependency lock still needs correction.
+The local inspection in Step 1 does not need this image. For the later Docker ingestion step, build it before class from `examples/nyc-taxi`:
 
-The simplified ingestion script now reuses the downloaded file through a read-only folder mount. Its Docker image build and database loading still need validation before that preparation step can be released. Keep the file in `examples/nyc-taxi/data` for both inspection and loading.
+```sh
+docker compose --env-file .env.example build ingest
+```
+
+This downloads and installs the Python dependencies into an image and copies the scripts. It does not start PostgreSQL or run ingestion. The command should finish successfully with the image marked as built. Keep the image for class; rebuild only when the code or dependencies change.
+
+The corrected dependency lock and image build were verified on 8 September 2026.
+
+The simplified ingestion script now reuses the downloaded file through a read-only folder mount. Its image build is verified; database-loading validation remains pending. Keep the file in `examples/nyc-taxi/data` for both inspection and loading.
 
 ## If a download fails
 
