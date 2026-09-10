@@ -31,7 +31,7 @@ def load_trips(file_path, engine):
         trips[name] = trips[name].astype("Int64")
 
     # 3. Connect. Step 2 must have created taxi_trips already.
-    # 4. Replace its rows and insert our subset in one transaction.
+    # 4. Append our subset in one transaction; existing rows stay in the table.
     with engine.begin() as connection:
         connection.execute(text("SET LOCAL lock_timeout = '10s'"))
         #connection.execute(text("TRUNCATE TABLE public.taxi_trips"))

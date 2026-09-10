@@ -3,6 +3,7 @@
 !inspect_source.py
 !ingest.py
 !ingest_months.py
+!load_zones.py
 !sql/
 !sql/**
 !tests/
