@@ -138,7 +138,7 @@ There are two different batch sizes:
 - `batch_size=10_000` with `next(...)` reads only the first group of up to **10,000 records** from the file. It does not iterate through the remaining groups.
 - `chunksize=1_000` in `trips.to_sql(...)` sends those selected records to PostgreSQL in groups of **1,000**. It does not reduce the total to 1,000.
 
-`if_exists="append"` inserts rows into the table, and `index=False` avoids adding pandas' row index as a column. The script clears the old rows first, so running the complete script again replaces the teaching dataset.
+`if_exists="append"` adds rows to the existing table, and `index=False` avoids adding pandas' row index as a column. The `TRUNCATE` line is commented out with `#`, so it does not run. Existing rows stay in the table, and each run adds the same first 10,000 records again.
 
 **Checkpoint:** Find where the script selects records, renames columns, and writes to PostgreSQL. Explain the difference between the two batch sizes.
 
@@ -195,11 +195,13 @@ Run the same command again:
 docker compose run --rm ingest ingest.py data/yellow_tripdata_2024-01.parquet
 ```
 
-Repeat the SQL count. It should still show 10,000 rows, not 20,000. The script clears `taxi_trips` before inserting the selected records again. It does not change the Part 2 `connection_check` table or the downloaded file.
+Repeat the SQL count. If you started with an empty table, the first successful run loaded 10,000 rows and this second run brings the total to 20,000. Each successful run adds another 10,000 rows from the same file. If you have already run the script more times, your total will be higher.
 
-The clear and insert operations share one **transaction** through `with engine.begin()`: they are confirmed together on success, or undone if a database write fails. The simplified script has no failure-simulation or full-month command-line options.
+These are repeated copies of the same first 10,000 records, not the next 10,000 records in the file. The script starts reading from the beginning each time and does not check whether those records are already in the table.
 
-**Checkpoint:** Explain why a successful rerun does not double the number of rows.
+All inserts for one run share one **transaction** through `with engine.begin()`: they are confirmed together on success, or undone if a database write fails. Rows from earlier successful runs remain in place.
+
+**Checkpoint:** Explain why the second run increases the count to 20,000 even though the source file has not changed. Does this mean you have loaded 20,000 different trips?
 
 ## Step 7 — Download and load several complete months
 

@@ -1,0 +1,80 @@
+# Week 3 — Transformation, serving, and protecting identifiers
+
+[Module homepage](../../README.md) · [Downloads before class](../../preparation/week-03.md)
+
+Week 2 made taxi records available in PostgreSQL. This week we make those records useful for a specific question: **How many selected trips started in each pickup zone on each day, and what was their combined fare amount?**
+
+By the end, you should be able to explain an ingestion choice, define a reporting rule, enrich and aggregate data with SQL, and show how an analyst can use customer tokens without reading the original identifiers.
+
+```mermaid
+flowchart LR
+    T[Week 2 taxi records] --> V[Reviewed trips: derived fields and flags]
+    Z[Taxi-zone lookup] --> V
+    V --> R[Daily report by pickup zone]
+    R --> P[Read results in pgAdmin]
+```
+
+The source records stay in place. SQL views provide different ways to query them. A **view** is a saved query: PostgreSQL runs its query when you read the view. It does not store a separate copy of the results.
+
+## Session route
+
+Allow about two hours, with extra time if SQL joins and grouping are new.
+
+| Activity | Time | Connection to HS26 SW3 slides* |
+|---|---|---|
+| Explain the existing ingestion design | 10 min | 3–10: ingestion decisions and CDC |
+| Inspect data quality | 20 min | 11–12: make ingested data usable |
+| Derive fields and join zone names | 30 min | 12–13: transformations and business rules |
+| Build and check a daily report | 20 min | 14–16: consumer and serving |
+| Tokenize fictional customer identifiers | 25 min | 21–22: security and least privilege |
+| Apply the decisions to your project | 15 min | 20: project architecture |
+
+*Page numbers refer to the 22-page `1_Foundation and Building Blocks_W3.pdf`.
+
+## 1. Explain what you already built
+
+Draw the Week 2 source, Python loader, PostgreSQL server, and pgAdmin client. Label who requests the file and when records become available.
+
+Discuss with a partner:
+
+- Why is this **batch** ingestion even though Python processes 10,000 records at a time?
+- Who initiates the download: the source or our loader?
+- Does downloading February tell us which January records were corrected or deleted?
+- Could monthly published files support an alert about congestion happening now?
+
+Finish with a sentence explaining **batch + pull + full-file ingestion**. Processing a file in small batches does not turn it into streaming. Loading another month is not change data capture (CDC): our source does not provide individual update and delete events.
+
+## 2. Build the practical results
+
+Follow these in order:
+
+1. [Taxi transformation and reporting](part-1-transformation.md).
+2. [Tokenization and access](part-2-tokenization.md).
+
+Use your existing PostgreSQL, pgAdmin, and Python image. No cloud account or new service is required. The report uses `public.taxi_trips_monthly`, loaded in Week 2 Part 3, Step 7. Finish loading at least one month before starting; you can also work with the full year of 2024.
+
+## 3. Apply the decisions to your project
+
+With your project partner, write down:
+
+- **Consumer:** who uses the result, and for what decision?
+- **Changes:** three concrete transformations your source needs.
+- **Rule:** one definition of a valid record or a metric, with an example.
+- **Placement:** what happens before loading, and what happens after loading?
+- **Cadence:** how fresh must the result be, and can the source provide that freshness?
+- **Access:** which fields should the consumer see, and which should be restricted?
+
+Update your pipeline diagram and explain one trade-off. For example, keeping source records helps you investigate and rebuild a report, but access to sensitive source fields must be restricted.
+
+## Finish with
+
+- A daily report with documented inclusion rules and matching record counts.
+- One example of a flagged record, or a statement that your loaded data contained none of that kind.
+- A successful token-based query and an expected permission-denied result.
+- Your updated project diagram and decisions.
+
+## References
+
+- [TLC trip data and taxi-zone lookup](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
+- [PostgreSQL views](https://www.postgresql.org/docs/18/sql-createview.html)
+- [PostgreSQL SET ROLE](https://www.postgresql.org/docs/18/sql-set-role.html)

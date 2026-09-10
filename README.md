@@ -30,6 +30,7 @@ By the end of the module, you should be able to:
 - [Downloads before class — weekly checklists](preparation/README.md)
 
 - [Week 2 — PostgreSQL & Data Ingestion](weeks/02-postgresql-and-ingestion/README.md)
+- [Week 3 — Transformation, serving, and protecting identifiers](weeks/03-transformation-and-serving/README.md)
 
 ## Recurring example
 
