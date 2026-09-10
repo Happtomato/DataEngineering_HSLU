@@ -2,11 +2,33 @@
 
 [Week 3 overview](README.md) · [Previous: transformation](part-1-transformation.md)
 
-## Goal
+## Scenario — A booking company's analyst needs customer totals
 
-Let an analyst count bookings per customer without seeing customer emails. We use two fictional customers and three bookings, supplied directly in the SQL file. These are separate from the taxi data, which has no passenger-email field.
+In Part 1, we prepared taxi records for a report. Now we explore another question: **how can we make data useful to an analyst while restricting access to customer identifiers?** This connects to the slides on tokenization and least privilege.
 
-A **token** is a substitute identifier. We generate a random UUID for each customer and retain the email-to-token mapping in a restricted table. The same customer keeps the same token across bookings and reruns.
+Imagine a small booking company. Its booking system records the customer's email address and the amount paid for each booking. An analyst wants to know how many bookings each customer made and how much they spent. The analyst needs to recognize bookings belonging to the same customer, but does not need to know that customer's email address.
+
+## The data we will use
+
+For this exercise, we introduce **two fictional customers and three bookings**:
+
+| Booking ID | Customer email | Amount (USD) |
+|---|---|---:|
+| 1 | `alex@example.com` | 12.00 |
+| 2 | `alex@example.com` | 18.00 |
+| 3 | `sam@example.com` | 25.00 |
+
+Alex has two bookings totalling 30.00 USD; Sam has one booking totalling 25.00 USD. These are the results the analyst should be able to calculate without seeing either email.
+
+These records are a separate teaching dataset, not part of the NYC taxi files. Our taxi data has no passenger-email field. The records above are already included as `INSERT` statements in [05-tokenization.sql](../../examples/nyc-taxi/sql/week3/05-tokenization.sql). You do not need to download a file or provide any real customer information. Running the setup in Step 2 creates this data in the same `ny_taxi` database, in separate schemas from the taxi tables.
+
+## Goal — Keep customer relationships, restrict access to emails
+
+A **token** is a substitute identifier. We will generate one random identifier for each customer and use it in place of their email in the analyst's view. For illustration, Alex's two bookings could both show `customer_A`, and Sam's booking could show `customer_B`. The actual script generates longer random identifiers called **UUIDs**.
+
+Simply removing emails would lose the link between a customer's bookings. Keeping the same token across those bookings lets the analyst group them correctly. A restricted table retains the **mapping**: which email belongs to which token.
+
+You will create the fictional records and mapping, expose a view containing tokens and booking amounts, and test the analyst's permissions. By the end, the analyst's totals query should succeed, while a query for the original emails should be denied.
 
 ```mermaid
 flowchart LR
