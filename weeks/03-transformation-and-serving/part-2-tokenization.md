@@ -73,23 +73,47 @@ Open [06-check-access.sql](../../examples/nyc-taxi/sql/week3/06-check-access.sql
 
 In the Query Tool toolbar, enable **Auto commit**: hover over the controls to find its name. Each standalone statement should finish its transaction automatically. This matters because one statement below is deliberately denied.
 
-First, inspect the mapping as the administrator. Then execute:
+First, inspect the mapping as the administrator. Then switch to the analyst role:
 
 ```sql
 SET ROLE deng_week3_analyst;
+```
+
+Check which role is active:
+
+```sql
 SELECT current_user;
 ```
 
 The result should show `deng_week3_analyst`. `SET ROLE` changes the permissions used by this connection. This role has `NOLOGIN`, so we demonstrate its permissions through our administrator connection rather than creating another login and password.
 
-Run the grouped query in block 3. Expect two result rows: one token with **2 bookings and 30.00 USD**, another with **1 booking and 25.00 USD**. Your random token values will differ from your partner's.
+**Check that reading the shared view is allowed:**
 
-Now execute block 4, which tries to read `week3_private.customers`. Expect **permission denied for schema week3_private**. This is the intended result.
+```sql
+SELECT * FROM week3_shared.bookings;
+```
+
+This should succeed and show three bookings with booking IDs, customer tokens, and amounts, but no emails.
+
+Then run the grouped query in block 3. Expect two result rows: one token with **2 bookings and 30.00 USD**, another with **1 booking and 25.00 USD**. Your random token values will differ from your partner's.
+
+**Check that reading the private mapping is denied** (block 4):
+
+```sql
+SELECT * FROM week3_private.customers;
+```
+
+Expect **permission denied for schema week3_private**. This is the intended result: the analyst can read the shared view but cannot read the email-to-token mapping.
 
 Finally, execute block 5 separately:
 
 ```sql
 RESET ROLE;
+```
+
+Then confirm that your administrator role is active again:
+
+```sql
 SELECT current_user;
 ```
 
