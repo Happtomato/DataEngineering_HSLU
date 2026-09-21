@@ -78,8 +78,8 @@ Step 1 runs locally: follow the [Python and file preparation](../../preparation/
 
 The loader requires the table from Step 2 and a downloaded yellow taxi file in `data/`. Compose mounts that folder read-only. Each run appends the same selected records to `taxi_trips`; no source download or metadata table is needed.
 
-### Week 3 — Transformation and serving
+### Week 4 — Transformation and serving
 
-Continue with the [Week 3 practical](../../weeks/03-transformation-and-serving/README.md) using this same environment and the complete months in `public.taxi_trips_monthly`. Complete its [before-class checklist](../../preparation/week-03.md) to obtain the zone CSV and rebuild the Python image.
+Continue with the [Week 4 practical](../../weeks/04-transformation-and-serving/README.md) using this same environment and the complete months in `public.taxi_trips_monthly`. Complete its [before-class checklist](../../preparation/week-04.md) to obtain the zone CSV and rebuild the Python image.
 
-[load_zones.py](load_zones.py) loads the local lookup CSV. The [Week 3 SQL files](sql/week3) create views for quality review and daily reporting, followed by a separate exercise with fictional customers and restricted access to their email-to-token mapping. The walkthrough explains the order and expected results.
+[load_zones.py](load_zones.py) loads the local lookup CSV. The [Week 4 SQL files](sql/week4) create views for quality review and daily reporting, followed by a separate exercise with fictional customers and restricted access to their email-to-token mapping. The walkthrough explains the order and expected results.

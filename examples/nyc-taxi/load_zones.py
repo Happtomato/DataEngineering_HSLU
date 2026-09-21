@@ -1,4 +1,4 @@
-"""Load the prepared TLC taxi-zone CSV for the Week 3 SQL exercise."""
+"""Load the prepared TLC taxi-zone CSV for the Week 4 SQL exercise."""
 
 import argparse
 import csv
@@ -15,7 +15,7 @@ def load_zones(file_path, engine):
                  for row in csv.DictReader(source)]
     if not zones:
         raise ValueError("The zone file is empty.")
-    schema = Path(__file__).parent / "sql/week3/01-zones.sql"
+    schema = Path(__file__).parent / "sql/week4/01-zones.sql"
     with engine.begin() as connection:
         connection.execute(text(schema.read_text()))
         connection.execute(text("DELETE FROM public.taxi_zones"))

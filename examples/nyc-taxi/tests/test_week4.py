@@ -14,7 +14,7 @@ from load_zones import load_zones
 SQL = Path(__file__).resolve().parents[1] / "sql"
 
 
-class Week3Checks(unittest.TestCase):
+class Week4Checks(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         database = os.environ["POSTGRES_DB"]
@@ -30,14 +30,14 @@ class Week3Checks(unittest.TestCase):
 
     def setUp(self):
         with self.engine.begin() as connection:
-            for schema in ("week3_private", "week3_shared"):
+            for schema in ("week4_private", "week4_shared"):
                 connection.execute(text(f"DROP SCHEMA IF EXISTS {schema} CASCADE"))
             connection.execute(text("DROP VIEW IF EXISTS public.daily_zone_report"))
             connection.execute(text("DROP VIEW IF EXISTS public.trips_reviewed"))
             connection.execute(text("DROP TABLE IF EXISTS public.taxi_zones"))
             connection.execute(text("DROP TABLE IF EXISTS public.taxi_trips_monthly"))
             connection.execute(text((SQL / "schema-monthly.sql").read_text()))
-            connection.execute(text((SQL / "week3/01-zones.sql").read_text()))
+            connection.execute(text((SQL / "week4/01-zones.sql").read_text()))
             connection.execute(text("INSERT INTO public.taxi_zones VALUES (1, 'Borough', 'Zone', 'Service')"))
             connection.execute(text("""
                 INSERT INTO public.taxi_trips_monthly
@@ -54,7 +54,7 @@ class Week3Checks(unittest.TestCase):
 
     def run_file(self, name):
         with self.engine.begin() as connection:
-            connection.execute(text((SQL / "week3" / name).read_text()))
+            connection.execute(text((SQL / "week4" / name).read_text()))
 
     def test_report_counts_rules_and_rerun(self):
         self.run_file("02-inspect.sql")
@@ -73,7 +73,7 @@ class Week3Checks(unittest.TestCase):
             self.assertEqual(tuple(row), (2, 30))
             self.assertEqual(connection.scalar(text(
                 "SELECT duration_minutes FROM public.trips_reviewed WHERE passenger_count IS NULL")), 30)
-        changed = (SQL / "week3/03-transform.sql").read_text().replace(
+        changed = (SQL / "week4/03-transform.sql").read_text().replace(
             "        WHEN t.fare_amount_usd < 0 THEN 'negative_fare'\n", "")
         with self.engine.begin() as connection:
             connection.execute(text(changed))
@@ -95,7 +95,7 @@ class Week3Checks(unittest.TestCase):
                              "Zone, with comma")
 
     def test_switch_existing_views_to_monthly_table(self):
-        old_view = (SQL / "week3/03-transform.sql").read_text().replace(
+        old_view = (SQL / "week4/03-transform.sql").read_text().replace(
             "public.taxi_trips_monthly", "public.taxi_trips").replace(
             "END AS report_status,\n    t.source_month", "END AS report_status")
         with self.engine.begin() as connection:
@@ -111,27 +111,27 @@ class Week3Checks(unittest.TestCase):
     def test_token_stability_and_access_boundary(self):
         self.run_file("05-tokenization.sql")
         with self.engine.connect() as connection:
-            before = connection.execute(text("SELECT * FROM week3_private.customers ORDER BY email")).all()
+            before = connection.execute(text("SELECT * FROM week4_private.customers ORDER BY email")).all()
         self.run_file("05-tokenization.sql")
         with self.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
             self.assertEqual(before, connection.execute(text(
-                "SELECT * FROM week3_private.customers ORDER BY email")).all())
+                "SELECT * FROM week4_private.customers ORDER BY email")).all())
             self.assertEqual(len(before), 2)
             self.assertNotEqual(before[0].customer_token, before[1].customer_token)
-            connection.execute(text("SET ROLE deng_week3_analyst"))
+            connection.execute(text("SET ROLE deng_week4_analyst"))
             try:
-                self.assertEqual(connection.scalar(text("SELECT current_user")), "deng_week3_analyst")
+                self.assertEqual(connection.scalar(text("SELECT current_user")), "deng_week4_analyst")
                 rows = connection.execute(text("""
-                    SELECT count(*), sum(amount_usd) FROM week3_shared.bookings
+                    SELECT count(*), sum(amount_usd) FROM week4_shared.bookings
                     GROUP BY customer_token ORDER BY count(*)
                 """)).all()
                 self.assertEqual([tuple(row) for row in rows], [(1, 25), (2, 30)])
                 for table in ("customers", "bookings"):
                     with self.assertRaises(DBAPIError) as denied:
-                        connection.execute(text(f"SELECT * FROM week3_private.{table}"))
+                        connection.execute(text(f"SELECT * FROM week4_private.{table}"))
                     self.assertEqual(denied.exception.orig.sqlstate, "42501")
                 with self.assertRaises(DBAPIError):
-                    connection.execute(text("DELETE FROM week3_shared.bookings"))
+                    connection.execute(text("DELETE FROM week4_shared.bookings"))
             finally:
                 connection.execute(text("RESET ROLE"))
 

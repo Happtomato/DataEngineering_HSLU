@@ -1,6 +1,6 @@
-# Week 3 — Part 2: Tokenization and access
+# Week 4 — Part 2: Tokenization and access
 
-[Week 3 overview](README.md) · [Previous: transformation](part-1-transformation.md)
+[Week 4 overview](README.md) · [Previous: transformation](part-1-transformation.md)
 
 ## Scenario — A booking company's analyst needs customer totals
 
@@ -20,7 +20,7 @@ For this exercise, we introduce **two fictional customers and three bookings**:
 
 Alex has two bookings totalling 30.00 USD; Sam has one booking totalling 25.00 USD. These are the results the analyst should be able to calculate without seeing either email.
 
-These records are a separate teaching dataset, not part of the NYC taxi files. Our taxi data has no passenger-email field. The records above are already included as `INSERT` statements in [05-tokenization.sql](../../examples/nyc-taxi/sql/week3/05-tokenization.sql). You do not need to download a file or provide any real customer information. Running the setup in Step 2 creates this data in the same `ny_taxi` database, in separate schemas from the taxi tables.
+These records are a separate teaching dataset, not part of the NYC taxi files. Our taxi data has no passenger-email field. The records above are already included as `INSERT` statements in [05-tokenization.sql](../../examples/nyc-taxi/sql/week4/05-tokenization.sql). You do not need to download a file or provide any real customer information. Running the setup in Step 2 creates this data in the same `ny_taxi` database, in separate schemas from the taxi tables.
 
 ## Goal — Keep customer relationships, restrict access to emails
 
@@ -42,14 +42,14 @@ The analyst can use the shared view but cannot read the private mapping. This ex
 
 ## Step 1 — Read the setup before running it
 
-Open [05-tokenization.sql](../../examples/nyc-taxi/sql/week3/05-tokenization.sql). It creates:
+Open [05-tokenization.sql](../../examples/nyc-taxi/sql/week4/05-tokenization.sql). It creates:
 
 | Object | Purpose |
 |---|---|
-| `week3_private.customers` | Stores fictional emails and their random tokens. |
-| `week3_private.bookings` | Stores three fictional bookings with their source emails. |
-| `week3_shared.bookings` | A view exposing tokens and amounts, without emails. |
-| `deng_week3_analyst` | A role with permission to read the shared view. |
+| `week4_private.customers` | Stores fictional emails and their random tokens. |
+| `week4_private.bookings` | Stores three fictional bookings with their source emails. |
+| `week4_shared.bookings` | A view exposing tokens and amounts, without emails. |
+| `deng_week4_analyst` | A role with permission to read the shared view. |
 
 `gen_random_uuid()` creates a random identifier; it does not encrypt the email or calculate a hash from it. `DEFAULT` generates this value when we insert a customer without specifying a token. The primary key on email ensures one mapping per customer.
 
@@ -59,7 +59,9 @@ Open [05-tokenization.sql](../../examples/nyc-taxi/sql/week3/05-tokenization.sql
 
 ## Step 2 — Create the fictional data and permissions
 
-Use pgAdmin's Query Tool connected to `ny_taxi` with your Week 2 administrator account. Run the entire setup file. Its `BEGIN` and `COMMIT` keep the setup in one transaction.
+Use pgAdmin's Query Tool connected to `ny_taxi` with your Week 2 administrator account. Run the entire [05-tokenization.sql](../../examples/nyc-taxi/sql/week4/05-tokenization.sql) file. Its `BEGIN` and `COMMIT` keep the setup in one transaction.
+
+If you already completed the earlier version labelled Week 3, run this setup again to create the `week4_private` and `week4_shared` schemas and `deng_week4_analyst` role used below. The earlier database objects remain separate; your taxi tables are unchanged.
 
 `GRANT` gives a permission; `REVOKE` removes a permission. `PUBLIC` here means all database roles, not the schema named `public`. The analyst receives schema `USAGE` (permission to access objects in that namespace) and `SELECT` on the shared view. The analyst gets no access to the private schema.
 
@@ -69,14 +71,14 @@ The view is owned by the administrator. PostgreSQL's default view permissions al
 
 ## Step 3 — Query with analyst permissions
 
-Open [06-check-access.sql](../../examples/nyc-taxi/sql/week3/06-check-access.sql). **Run its numbered blocks one at a time**, not the whole file.
+Open [06-check-access.sql](../../examples/nyc-taxi/sql/week4/06-check-access.sql). **Run its numbered blocks one at a time**, not the whole file.
 
 In the Query Tool toolbar, enable **Auto commit**: hover over the controls to find its name. Each standalone statement should finish its transaction automatically. This matters because one statement below is deliberately denied.
 
 First, inspect the mapping as the administrator. Then switch to the analyst role:
 
 ```sql
-SET ROLE deng_week3_analyst;
+SET ROLE deng_week4_analyst;
 ```
 
 Check which role is active:
@@ -85,12 +87,12 @@ Check which role is active:
 SELECT current_user;
 ```
 
-The result should show `deng_week3_analyst`. `SET ROLE` changes the permissions used by this connection. This role has `NOLOGIN`, so we demonstrate its permissions through our administrator connection rather than creating another login and password.
+The result should show `deng_week4_analyst`. `SET ROLE` changes the permissions used by this connection. This role has `NOLOGIN`, so we demonstrate its permissions through our administrator connection rather than creating another login and password.
 
 **Check that reading the shared view is allowed:**
 
 ```sql
-SELECT * FROM week3_shared.bookings;
+SELECT * FROM week4_shared.bookings;
 ```
 
 This should succeed and show three bookings with booking IDs, customer tokens, and amounts, but no emails.
@@ -100,10 +102,10 @@ Then run the grouped query in block 3. Expect two result rows: one token with **
 **Check that reading the private mapping is denied** (block 4):
 
 ```sql
-SELECT * FROM week3_private.customers;
+SELECT * FROM week4_private.customers;
 ```
 
-Expect **permission denied for schema week3_private**. This is the intended result: the analyst can read the shared view but cannot read the email-to-token mapping.
+Expect **permission denied for schema week4_private**. This is the intended result: the analyst can read the shared view but cannot read the email-to-token mapping.
 
 Finally, execute block 5 separately:
 

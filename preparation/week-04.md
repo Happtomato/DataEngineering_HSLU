@@ -1,6 +1,6 @@
-# Week 3 — Downloads before class
+# Week 4 — Downloads before class
 
-[All preparation checklists](README.md) · [Week 3 materials](../weeks/03-transformation-and-serving/README.md)
+[All preparation checklists](README.md) · [Week 4 materials](../weeks/04-transformation-and-serving/README.md)
 
 Prepare these files and the Python image before travelling to class. This checklist does not require loading data, writing SQL, or completing the week's exercises.
 
@@ -8,15 +8,15 @@ Prepare these files and the Python image before travelling to class. This checkl
 
 Keep Docker, the PostgreSQL and pgAdmin images, your `.env`, and the January taxi file from [Week 2 preparation](week-02.md). Keep the existing database volume too. Do not run `docker compose down -v`: it removes the saved lab database.
 
-If you missed Week 2, complete its downloads checklist now. Week 3 uses at least one complete month from Week 2 Part 3, Step 7. Keep the downloaded January file so that loading it requires no additional download. The loading activity stays in the practical instructions; it is not part of this preparation checklist.
+If you missed Week 2, complete its downloads checklist now. Week 4 uses at least one complete month from Week 2 Part 3, Step 7. Keep the downloaded January file so that loading it requires no additional download. The loading activity stays in the practical instructions; it is not part of this preparation checklist.
 
 ## 2. Get the current course files
 
 Update your course copy using your usual Git workflow, preserving your own changes. Check that it contains:
 
 - `examples/nyc-taxi/load_zones.py`
-- `examples/nyc-taxi/sql/week3/01-zones.sql` through `06-check-access.sql`
-- `weeks/03-transformation-and-serving/README.md`
+- `examples/nyc-taxi/sql/week4/01-zones.sql` through `06-check-access.sql`
+- `weeks/04-transformation-and-serving/README.md`
 
 The fictional customer and booking records are included in `05-tokenization.sql`; there is no separate customer dataset to download.
 
@@ -40,7 +40,7 @@ Start Docker. Open a terminal in `examples/nyc-taxi`, then run:
 docker compose build ingest
 ```
 
-This prepares an image containing the new zone loader. It does not start PostgreSQL or load records. The existing dependencies are reused; no new Python package is needed for Week 3.
+This prepares an image containing the new zone loader. It does not start PostgreSQL or load records. The existing dependencies are reused; no new Python package is needed for Week 4.
 
 Check that the script is available without starting the database:
 
@@ -55,6 +55,6 @@ Expect usage instructions mentioning a file path. `--no-deps` skips dependent se
 - Docker starts and the Week 2 images are available.
 - The Week 2 taxi file and the new zone CSV are in `examples/nyc-taxi/data`.
 - The updated image built successfully and the help command worked.
-- The six Week 3 SQL files are available locally.
+- The six Week 4 SQL files are available locally.
 
 No additional cloud account, service, or software installation is required. Recheck this file when a course update is announced.

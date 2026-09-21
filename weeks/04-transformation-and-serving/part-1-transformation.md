@@ -1,6 +1,6 @@
-# Week 3 — Part 1: From taxi records to a daily report
+# Week 4 — Part 1: From taxi records to a daily report
 
-[Week 3 overview](README.md) · [Next: tokenization](part-2-tokenization.md)
+[Week 4 overview](README.md) · [Next: tokenization](part-2-tokenization.md)
 
 ## Goal and starting point
 
@@ -35,7 +35,7 @@ docker compose up -d --wait
 
 ## Step 1 — Inspect before deciding what to change
 
-Open [02-inspect.sql](../../examples/nyc-taxi/sql/week3/02-inspect.sql) in your editor. Copy each query into pgAdmin and execute it separately. `WHERE` keeps rows meeting a condition; `IS NULL` finds missing values.
+Open [02-inspect.sql](../../examples/nyc-taxi/sql/week4/02-inspect.sql) in your editor. Copy each query into pgAdmin and execute it separately. `WHERE` keeps rows meeting a condition; `IS NULL` finds missing values.
 
 Record the number of missing passenger counts, negative fares, and drop-offs before pickups. Read a few matching records. A count of zero is a valid result; your loaded data may not contain every issue.
 
@@ -45,7 +45,7 @@ Record the number of missing passenger counts, negative fares, and drop-offs bef
 
 ## Step 2 — Load the zone names
 
-The trip table contains numeric zone identifiers. A **lookup table** maps each identifier to a name and borough. You have already downloaded `taxi_zone_lookup.csv` into `examples/nyc-taxi/data/` as part of the [Week 3 preparation](../../preparation/week-03.md). This file supplies that mapping.
+The trip table contains numeric zone identifiers. A **lookup table** maps each identifier to a name and borough. You have already downloaded `taxi_zone_lookup.csv` into `examples/nyc-taxi/data/` as part of the [Week 4 preparation](../../preparation/week-04.md). This file supplies that mapping.
 
 Run:
 
@@ -95,7 +95,7 @@ SELECT * FROM public.taxi_zones ORDER BY location_id LIMIT 10;
 
 ## Step 3 — Derive fields, enrich, and flag records
 
-Read [03-transform.sql](../../examples/nyc-taxi/sql/week3/03-transform.sql). Before executing it, use this guide:
+Read [03-transform.sql](../../examples/nyc-taxi/sql/week4/03-transform.sql). Before executing it, use this guide:
 
 | SQL expression | What it does here |
 |---|---|
@@ -145,7 +145,7 @@ The counts must match. The left join retains unmatched trips, and the unique loo
 
 Our consumer is an analyst exploring historical trips in the loaded dataset. The requested output is one row per **pickup date and pickup zone**, containing a trip count and the sum of included fare amounts.
 
-Read [04-report.sql](../../examples/nyc-taxi/sql/week3/04-report.sql):
+Read [04-report.sql](../../examples/nyc-taxi/sql/week4/04-report.sql):
 
 - `WHERE report_status = 'included'` applies our reporting rules.
 - `GROUP BY` gathers records with the same date and zone.

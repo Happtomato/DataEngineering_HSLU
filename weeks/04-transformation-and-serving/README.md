@@ -1,6 +1,6 @@
-# Week 3 — Transformation, serving, and protecting identifiers
+# Week 4 — Transformation, serving, and protecting identifiers
 
-[Module homepage](../../README.md) · [Downloads before class](../../preparation/week-03.md)
+[Module homepage](../../README.md) · [Downloads before class](../../preparation/week-04.md)
 
 Week 2 made taxi records available in PostgreSQL. This week we make those records useful for a specific question: **How many selected trips started in each pickup zone on each day, and what was their combined fare amount?**
 
@@ -29,7 +29,7 @@ Allow about two hours, with extra time if SQL joins and grouping are new.
 | Tokenize fictional customer identifiers | 25 min | 21–22: security and least privilege |
 | Apply the decisions to your project | 15 min | 20: project architecture |
 
-*Page numbers refer to the 22-page `1_Foundation and Building Blocks_W3.pdf`.
+*Page numbers refer to the 22-page `1_Foundation and Building Blocks_W3.pdf`. The slide file is labelled SW3; this practical takes place in Week 4, after Week 3's project presentations.
 
 ## 1. Explain what you already built
 
