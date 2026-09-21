@@ -23,9 +23,9 @@ GROUP BY source_month
 ORDER BY source_month;
 ```
 
-The views use all committed records in this table. Full-year queries can take longer than sample queries. Our report describes the loaded yellow taxi files under the rules below; it does not cover every taxi service or every component of revenue.
+The queries in this exercise use the monthly data you loaded into `public.taxi_trips_monthly`. Wait until ingestion finishes before continuing so that your results stay consistent while you work. Queries over a full year may take longer because they process more records.
 
-If you already created Week 3's views using the small table or the `week3` schema, rerun `03-transform.sql`, then `04-report.sql` below. The updated files create the views in `public` using the monthly table. Query these `public` views from now on; any earlier views in `week3` remain separate.
+We will create two views in the `public` schema: `trips_reviewed`, which adds calculated fields and reporting flags, and `daily_zone_report`, which summarizes the selected trips by day and pickup zone.
 
 All terminal commands below run from `examples/nyc-taxi`. If the services are stopped:
 
@@ -53,7 +53,21 @@ Run:
 docker compose run --rm ingest load_zones.py data/taxi_zone_lookup.csv
 ```
 
-Here `ingest` selects our existing Python container environment; `load_zones.py` selects the script. This script reads the local CSV, creates `public.taxi_zones`, and loads the mapping. It does not download anything. Rerunning replaces only this lookup table's rows in one transaction; it keeps the trip records.
+Read the command from left to right:
+
+- `docker compose run` creates a container to run a command.
+- `--rm` removes that container after the command finishes. It does **not** delete or replace a Python script.
+- `ingest` selects the service configuration from `compose.yaml`, including its Python image and database connection settings.
+- `load_zones.py` selects the script to run instead of the default `ingest.py`, **for this run only**.
+- `data/taxi_zone_lookup.csv` is the file path passed to the script inside the container.
+
+The Dockerfile defines `ENTRYPOINT ["python"]` and `CMD ["ingest.py"]`. Providing `load_zones.py data/taxi_zone_lookup.csv` overrides that default command, so Python runs:
+
+```sh
+python load_zones.py data/taxi_zone_lookup.csv
+```
+
+Both Python scripts remain in the image. The script reads the local CSV, creates `public.taxi_zones`, and loads the mapping. It does not download anything. After it finishes, `--rm` removes the temporary container, but the loaded rows remain in PostgreSQL.
 
 If Python says the script does not exist, rebuild the image with `docker compose build ingest`.
 
@@ -65,7 +79,19 @@ SELECT * FROM public.taxi_zones ORDER BY location_id LIMIT 10;
 
 `public` is the same **schema** (a namespace for database objects) that contains our monthly trips table. `location_id` is the lookup table's primary key: there can be only one mapping per identifier. Refresh the Schemas entry in pgAdmin if you want to browse the new objects.
 
-**Finish with:** a lookup table you can query and an explanation of why two names for the same identifier would cause trouble during a join.
+**Investigate:** Does running the zone-loading command several times add duplicate zones?
+
+1. Predict what will happen to the number of rows.
+2. Run this query in pgAdmin and note the result:
+
+   ```sql
+   SELECT COUNT(*) AS zone_count FROM public.taxi_zones;
+   ```
+
+3. Run the zone-loading command again, then rerun the count query. Does the result match your prediction?
+4. Read [load_zones.py](../../examples/nyc-taxi/load_zones.py). Find the statements that explain the result. Is this behavior caused by `--rm` or by the script?
+
+**Finish with:** a lookup table you can query, an explanation of what happens when you load it again, and why two names for the same identifier would cause trouble during a join.
 
 ## Step 3 — Derive fields, enrich, and flag records
 
@@ -111,6 +137,8 @@ The counts must match. The left join retains unmatched trips, and the unique loo
 
 **Discuss:** Why might an inner join hide a data-quality problem? If one record has two issues, why does our status show only one? The separate inspection queries can count overlapping issues; `CASE` gives each record one status.
 
+**Suggest a solution:** Our current `CASE` reports only the first matching issue. How could you change the query so that a trip with both a negative fare and an unmatched pickup zone shows both issues? Propose one solution.
+
 **Finish with:** a queryable view with dates, durations, zone names, and reporting statuses. The original table is unchanged.
 
 ## Step 4 — Build a report for a consumer
@@ -138,7 +166,10 @@ Predict what happens if negative fares are included. In `03-transform.sql`, remo
 
 The existing report view uses the updated reviewed view immediately; you do not need to reload the taxi file. Counts and totals may change, depending on the data and the other rules. Restore the original definition afterward.
 
-**Discuss:** Would this revised metric answer the same business question? Why does retaining input records make this comparison possible? Could running the report daily make monthly published data fresh enough for a live congestion alert?
+**Discuss:**
+
+1. How does including negative fares change what the fare total measures? Would you use this total to answer the same business question as the total that excludes negative fares?
+2. We kept the original trips and excluded negative fares only through the view. Why does this let us compare the two versions of the report? What would we need to do if we had deleted those trips during ingestion?
 
 ## If something fails
 
