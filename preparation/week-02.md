@@ -2,10 +2,6 @@
 
 [All weeks](README.md) · [Week 2 materials](../weeks/02-postgresql-and-ingestion/README.md)
 
-**Status:** Database downloads and local Step 1 preparation are documented. The Docker ingestion image build has also been verified; full database-loading validation remains pending.
-
-**Last updated:** 7 September 2026. **Latest change:** Step 1 now uses a manually downloaded file and local Python, with no Docker.
-
 Set aside approximately 20–40 minutes on your first setup; download time varies with your connection. Do this on the computer you will bring to class. You only need to install and download here; we will explain the tools and start the database together in class.
 
 ## 1. Install Docker and check that it runs
@@ -63,17 +59,19 @@ docker image inspect dpage/pgadmin4:9.17 --format '{{.Id}}'
 
 **Ready when:** each command prints an identifier beginning with `sha256:`. A “No such image” error means that download has not completed. These checks do not start containers or contact PostgreSQL.
 
-You may close Docker Desktop afterward. Keep the downloaded images: do not run image-pruning commands before class. Start Docker again at the beginning of the session.
+Keep Docker running until you have built the ingestion image in Step 7. Keep the downloaded images; do not run image-pruning commands before class.
 
-## 5. Prepare local Python for Step 1
+## 5. Prepare local Python for Part 3, Step 1
 
-Step 1 uses Python on your laptop, independently of Docker. Use Python 3.12 or 3.13. If needed, install it from [python.org](https://www.python.org/downloads/) before continuing. An existing suitable installation is fine.
+[Part 3, Step 1](../weeks/02-postgresql-and-ingestion/part-3-python-ingestion.md) uses Python on your laptop, independently of Docker. Use Python 3.12 or 3.13. If needed, install it from [python.org](https://www.python.org/downloads/) before continuing. An existing suitable installation is fine.
 
-From `examples/nyc-taxi`, create a local environment and install the one required library. On macOS/Linux:
+From `examples/nyc-taxi`, create a local environment and install the one required library. The commands below select Python 3.13 explicitly. If you installed Python 3.12, replace `python3.13` with `python3.12` on macOS/Linux, or `py -3.13` with `py -3.12` on Windows.
+
+On macOS/Linux:
 
 ```sh
-python3 --version
-python3 -m venv .venv
+python3.13 --version
+python3.13 -m venv .venv
 .venv/bin/python -m pip install -r requirements-inspect.txt
 .venv/bin/python -c "import pyarrow; print(pyarrow.__version__)"
 ```
@@ -81,26 +79,41 @@ python3 -m venv .venv
 On Windows PowerShell:
 
 ```powershell
-py --version
-py -m venv .venv
+py -3.13 --version
+py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-inspect.txt
 .\.venv\Scripts\python.exe -c "import pyarrow; print(pyarrow.__version__)"
 ```
 
-Check the version command before creating the environment. If it reports another Python version, select your installed Python 3.12 or 3.13 interpreter instead. If `.venv` already exists with a suitable interpreter, keep it and skip the creation command.
+Check that the version command succeeds before creating the environment. If the command is not found, finish installing Python 3.12 or 3.13 and reopen your terminal. If `.venv` already exists with a suitable interpreter, keep it and skip the creation command.
 
 **Ready when:** the last command prints `22.0.0`. There is no need to activate the environment; the commands use its interpreter directly. You do not need pandas, SQLAlchemy, or the ingestion Docker image for this step.
 
-## 6. Download the taxi file once
+## 6. Download the taxi files and their reference document
 
 1. Create a folder named `data` inside `examples/nyc-taxi`, using your file manager.
 2. Download [January 2024 yellow taxi records](https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-01.parquet), linked from the [official TLC page](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page).
 3. Save or move it to `examples/nyc-taxi/data/yellow_tripdata_2024-01.parquet`. Keep the `.parquet` extension. If you already downloaded this exact file, reuse it.
-4. Save the Yellow Trips Data Dictionary linked on the TLC page for use in class.
+4. Download [February 2024 yellow taxi records](https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-02.parquet) into the same folder as `yellow_tripdata_2024-02.parquet`. The final exercise in Part 3 uses this second month. You do not need to download the full year.
+5. Download the [**Yellow Trips Data Dictionary** PDF](https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf), linked on the TLC webpage, and save it on your laptop (for example, in Downloads). We will use it in class to understand the dataset's columns. It is a reference document, not another dataset to ingest.
 
-**Ready when:** the browser download is complete and the named file is in `data/` with a nonzero size. This checks availability; we will open the file and interpret its contents in class. Download duration depends on your connection.
+**Ready when:** both browser downloads are complete and both Parquet files are in `data/` with nonzero sizes. This checks availability; we will open the file and interpret its contents in class. Download duration depends on your connection.
 
-The inspection script will read this file without deleting or downloading it again. Parquet files and `.venv` are excluded from Git. You do not need to inspect records or write code before class.
+The inspection script will read the January file without deleting or downloading it again. The monthly loader reuses both files when you select January and February in class. Parquet files and `.venv` are excluded from Git. You do not need to inspect records or write code before class.
+
+## 7. Prepare the Python ingestion image
+
+Keep Docker Desktop/the Docker engine running. From `examples/nyc-taxi`, run:
+
+```sh
+docker compose --env-file .env.example build ingest
+```
+
+This downloads the Python base image, installs the ingestion libraries, and copies the scripts into an image. It does not start PostgreSQL or run ingestion. The example settings let Compose read the configuration without creating your own `.env` yet.
+
+**Ready when:** the build finishes successfully without an error. Keep the image for class; rebuild it if the example code or dependencies change. This image is needed for the Docker ingestion activity, while the local `.venv` is used for file inspection.
+
+Keep both Parquet files in `examples/nyc-taxi/data/`; the container will read them through a read-only folder mount. You can now close Docker Desktop. Start it again at the beginning of class.
 
 ## Ready-to-attend checklist
 
@@ -109,23 +122,10 @@ The inspection script will read this file without deleting or downloading it aga
 - [ ] I have the current example files on the laptop I will bring.
 - [ ] Both image checks print an image ID.
 - [ ] The local Python environment imports PyArrow and prints `22.0.0`.
-- [ ] The yellow taxi file is downloaded into `examples/nyc-taxi/data/`.
-- [ ] I have the matching data dictionary available.
+- [ ] Both January and February 2024 yellow taxi files are in `examples/nyc-taxi/data/`.
+- [ ] The ingestion image build completed successfully.
+- [ ] I have downloaded the Yellow Trips Data Dictionary PDF explaining the dataset's columns.
+
+If any check fails, note the command and its error and contact the instructor before class. Do not include passwords or `.env` contents.
 
 You do not need to open pgAdmin, register a database, run SQL, or understand Docker networking before class. Those are learning activities in [Part 2](../weeks/02-postgresql-and-ingestion/part-2-postgres-and-pgadmin.md).
-
-## Prepare the Python ingestion image
-
-The local inspection in Step 1 does not need this image. For the later Docker ingestion step, build it before class from `examples/nyc-taxi`:
-
-```sh
-docker compose --env-file .env.example build ingest
-```
-
-This downloads and installs the Python dependencies into an image and copies the scripts. It does not start PostgreSQL or run ingestion. The command should finish successfully with the image marked as built. Keep the image for class; rebuild only when the code or dependencies change.
-
-The corrected dependency lock and image build were verified on 8 September 2026.
-
-The simplified ingestion script now reuses the downloaded file through a read-only folder mount. Its image build is verified; database-loading validation remains pending. Keep the file in `examples/nyc-taxi/data` for both inspection and loading.
-
-

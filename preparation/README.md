@@ -8,7 +8,7 @@ You do not need to understand the weekly tools to follow these preparation steps
 
 | Week | Download checklist | Current status |
 |---|---|---|
-| 2 | [Week 2](week-02.md) | Database and local inspection preparation documented; Docker ingestion pending |
+| 2 | [Week 2](week-02.md) | Database images, local Python, January/February files, and ingestion image |
 | 4 | [Week 4](week-04.md) | Zone lookup download and updated Python image |
 
 Week 3 is reserved for project presentations; there is no practical lab or download checklist.
