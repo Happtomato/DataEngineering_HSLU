@@ -1,0 +1,39 @@
+name: deng-week5
+
+services:
+  kestra-db:
+    image: postgres:18.6-bookworm
+    environment:
+      POSTGRES_DB: kestra
+      POSTGRES_USER: kestra
+      POSTGRES_PASSWORD: ${KESTRA_DB_PASSWORD:?Set KESTRA_DB_PASSWORD in .env}
+    volumes:
+      - kestra_db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kestra -d kestra"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  kestra:
+    image: kestra/kestra:v1.1
+    command: server standalone --config /etc/kestra/application.yaml
+    ports:
+      - "127.0.0.1:${KESTRA_PORT:-8080}:8080"
+    environment:
+      DATASOURCES_POSTGRES_URL: jdbc:postgresql://kestra-db:5432/kestra
+      DATASOURCES_POSTGRES_DRIVERCLASSNAME: org.postgresql.Driver
+      DATASOURCES_POSTGRES_USERNAME: kestra
+      DATASOURCES_POSTGRES_PASSWORD: ${KESTRA_DB_PASSWORD:?Set KESTRA_DB_PASSWORD in .env}
+      KESTRA_LOGIN_USER: ${KESTRA_USER:?Set KESTRA_USER in .env}
+      KESTRA_LOGIN_PASSWORD: ${KESTRA_PASSWORD:?Set KESTRA_PASSWORD in .env}
+    volumes:
+      - kestra_files:/app/storage
+      - ./application.yaml:/etc/kestra/application.yaml:ro
+    depends_on:
+      kestra-db:
+        condition: service_healthy
+
+volumes:
+  kestra_db:
+  kestra_files:

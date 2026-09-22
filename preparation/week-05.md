@@ -1,6 +1,6 @@
 # Week 5 — Downloads before class
 
-[All preparation checklists](README.md) · [Module homepage](../README.md)
+[All preparation checklists](README.md) · [Week 5 materials](../weeks/05-workflow-orchestration/README.md)
 
 This week we will use **Kestra** to coordinate our existing taxi pipeline. Kestra will run in Docker and provide an interface in your browser. You do not need to install Kestra directly on your laptop or create a cloud account.
 
@@ -49,7 +49,7 @@ The PostgreSQL image is the same one used in Week 2; Docker can reuse the existi
 
 These commands only download images. They do not start Kestra or PostgreSQL, change your existing database, or run ingestion. Allow time for the downloads to finish; Kestra's image may take several minutes depending on your connection.
 
-Use the listed Kestra tag for this preparation, matching the [Zoomcamp local setup](https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/02-workflow-orchestration/docker-compose.yml). Recheck this checklist if an update is announced before class.
+Use the version shown above so everyone has the same Kestra environment for class.
 
 ## 4. Check that the images are available
 
@@ -72,6 +72,6 @@ You may close Docker Desktop afterward. Keep the images and start Docker again a
 - [ ] The January and February taxi files and zone lookup CSV are in `examples/nyc-taxi/data/`.
 - [ ] I have the current course files.
 
-You do not need to start Kestra, create a workflow, run SQL, or reload taxi data before class. The Compose configuration and workflow instructions will be provided with the practical; the download commands above can be completed independently.
+You do not need to start Kestra, create a workflow, run SQL, or reload taxi data before class. Follow the [Week 5 startup instructions](../weeks/05-workflow-orchestration/README.md) in class; the download commands above can be completed independently.
 
 If a check fails, send the instructor your operating system, the command, and its error before class. Do not include passwords or `.env` contents.
