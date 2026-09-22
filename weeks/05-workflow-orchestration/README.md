@@ -110,3 +110,7 @@ The named volumes `kestra_db` and `kestra_files` preserve the metadata and files
 | Metadata database fails after changing its password | PostgreSQL initializes its password only when its data volume is first created. Changing `.env` alone does not update an existing database password; restore the original setting or ask the instructor for help. |
 
 **Finish with:** a working Kestra login and an explanation of why its internal database is separate from the taxi database.
+
+## Next — Create your first flow
+
+Once you can log in, follow [Your first Kestra flow](part-1-first-flow.md). You will supply a year and month, run one logging task, and compare two executions.
