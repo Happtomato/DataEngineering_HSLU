@@ -8,7 +8,7 @@ First, we will understand a downloaded taxi file. Later steps define a PostgreSQ
 
 **Step 1 runs locally with Python.** It needs no Docker, Compose configuration, database, or `.env`. Complete [the advance preparation](../../preparation/week-02.md) first: install the Parquet reader and download the data file.
 
-The later Docker ingestion image now builds successfully. Full database-loading validation remains pending; Step 1 uses a separate local inspection script.
+Later steps run the Python ingestion scripts in Docker to load taxi records into PostgreSQL.
 
 ## Step 1 — Open the file and understand its records
 
