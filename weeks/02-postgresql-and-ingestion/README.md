@@ -161,7 +161,7 @@ Discuss with a partner:
 ## Practical exercise
 
 - [Part 2 — PostgreSQL and pgAdmin](part-2-postgres-and-pgadmin.md)
-- [Part 3 — Python ingestion](part-3-python-ingestion.md) — draft; runtime validation pending.
+- [Part 3 — Python ingestion](part-3-python-ingestion.md) — inspect the source file and load taxi records into PostgreSQL.
 
 The practical goal is to load a selected monthly trip file into a local PostgreSQL table and inspect it through pgAdmin. We will work through these checkpoints:
 

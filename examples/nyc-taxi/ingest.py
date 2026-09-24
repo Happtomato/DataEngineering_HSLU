@@ -33,6 +33,8 @@ def load_trips(file_path, engine):
     # 3. Connect. Step 2 must have created taxi_trips already.
     # 4. Append our subset in one transaction; existing rows stay in the table.
     with engine.begin() as connection:
+        # In this transaction, wait at most 10 seconds to acquire a database lock.
+        # This limits lock waiting, not the total ingestion time.
         connection.execute(text("SET LOCAL lock_timeout = '10s'"))
         #connection.execute(text("TRUNCATE TABLE public.taxi_trips"))
         trips.to_sql("taxi_trips", connection, schema="public",

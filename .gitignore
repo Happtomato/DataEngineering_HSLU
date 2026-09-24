@@ -6,3 +6,4 @@ __pycache__/
 .venv/
 /examples/nyc-taxi/VALIDATION.md
 *.parquet
+slides/

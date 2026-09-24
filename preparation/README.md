@@ -10,6 +10,7 @@ You do not need to understand the weekly tools to follow these preparation steps
 |---|---|---|
 | 2 | [Week 2](week-02.md) | Database images, local Python, January/February files, and ingestion image |
 | 4 | [Week 4](week-04.md) | Zone lookup download and updated Python image |
+| 5 | [Week 5](week-05.md) | Kestra and PostgreSQL image downloads; retain existing taxi files |
 
 Week 3 is reserved for project presentations; there is no practical lab or download checklist.
 

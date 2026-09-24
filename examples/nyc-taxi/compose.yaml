@@ -30,6 +30,7 @@ services:
         condition: service_healthy
 
   ingest:
+    image: deng-taxi-ingest:local
     build: .
     profiles: ["tools"]
     volumes:
@@ -51,3 +52,7 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+
+networks:
+  default:
+    name: deng-taxi
