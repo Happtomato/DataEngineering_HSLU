@@ -281,6 +281,72 @@ After both loads, expect two result rows, one per source month. Compare their co
 Run January again and repeat the query. January's count should remain the same for the same file; February should still be present with its earlier count. This replaces a month's records on rerun rather than duplicating them. It does not attempt to identify and remove duplicate records already present in the source.
 
 
+## Step 8 — Use a hash to skip records already loaded
+
+**Goal:** compare Step 7's monthly replacement with inserting only records whose key is new. Use [ingest_hashed.py](../../examples/nyc-taxi/ingest_hashed.py). It writes to a new table, `public.taxi_trips_hashed`, leaving the earlier tables and their views unchanged.
+
+### 1. Understand the record key
+
+A **hash** is a fingerprint calculated from values. The same input values produce the same hash. Our script uses SHA-256 on these seven fields:
+
+- vendor ID;
+- pickup and drop-off timestamps;
+- pickup and drop-off zone IDs;
+- fare amount;
+- trip distance.
+
+Read `HASH_COLUMNS` and `row_hash()` in the script. Before hashing, the script normalizes numeric types and encodes the values as a JSON list. This preserves field boundaries and missing values: we do not simply join values into an ambiguous string.
+
+This is our chosen definition of an identical record, **not an official unique trip ID**. Different trips with identical selected values will be treated as one record. Passenger count and total amount are not part of this key: changes to them alone will be skipped. A changed fare produces a new hash and therefore a new row. This exercise does not synchronize corrections or deletions from a revised source file.
+
+### 2. Follow the insertion
+
+The script reuses Step 7's download function and reads every batch. It adds `row_hash` to each record, then inserts it into the new table.
+
+The [table definition](../../examples/nyc-taxi/sql/schema-hashed.sql) declares `row_hash` as a **primary key**. PostgreSQL enforces uniqueness. The insertion uses `ON CONFLICT (row_hash) DO NOTHING`: if the key already exists, skip that record. This also handles repeated keys within the input and across batches.
+
+Unlike Step 7, this script does not delete destination rows. Each monthly file still uses one transaction: all its new rows commit together, or roll back on failure. Earlier months already committed remain saved.
+
+`source_month` records the file that first inserted the key. It is not included in the hash, so an identical key in another month's file is also skipped.
+
+### 3. Build, run and verify
+
+From `examples/nyc-taxi`, with PostgreSQL running and the `data/` directory present:
+
+```sh
+docker compose build ingest
+docker compose run --rm ingest ingest_hashed.py --year 2024 --months 1
+```
+
+The script reuses the prepared January file, or downloads it temporarily, just as in Step 7. To request several months, use `--months 1 2`.
+
+The final message reports how many records were **read**, **inserted**, and **skipped**. On the first run, some source records may already share the same key, so the inserted count can be smaller than the file's row count.
+
+In pgAdmin, run:
+
+```sql
+SELECT COUNT(*) AS stored_rows,
+       COUNT(DISTINCT row_hash) AS distinct_keys
+FROM public.taxi_trips_hashed;
+```
+
+The two counts must match. Note the count, rerun the same January command, then run the query again. For an unchanged file, the second run should insert **zero** rows and leave the count unchanged. It still reads and hashes the file; it does not skip downloading or processing merely because the month was loaded before.
+
+### 4. Compare the approaches
+
+| Question | Step 7: monthly replacement | Step 8: hash-based insertion |
+|---|---|---|
+| What happens on a rerun? | Delete and reload the selected month. | Keep existing rows; insert only new keys. |
+| Repeated records inside a file? | Preserve every source row. | Keep one row per hash. |
+| A fare is corrected? | Replace the month's old version. | Insert a new key; the old row remains. |
+| A row disappears from the source? | Remove it when replacing that month. | Keep the old row. |
+
+**Discuss:** Why must the hash stay the same on a rerun? Why would a randomly generated UUID not achieve this?
+
+**Discuss:** Which columns would you choose to identify a trip, and what could go wrong with that choice?
+
+**Checkpoint:** Explain why a successful hash-based load does not require the destination count to equal the source file's row count.
+
 ## References
 
 - [TLC trip-record data and dictionaries](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
