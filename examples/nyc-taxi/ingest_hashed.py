@@ -1,31 +1,46 @@
-"""Download selected yellow taxi months and load every record in 10,000-row batches."""
+"""Load selected taxi months, skipping records whose hash already exists."""
 
 import argparse
 from datetime import date
+import hashlib
+import json
 import os
+from numbers import Integral
 from pathlib import Path
-import shutil
 from tempfile import TemporaryDirectory
-from urllib.request import urlopen
 
+import pandas as pd
 import pyarrow.parquet as pq
 from sqlalchemy import URL, create_engine, text
+from sqlalchemy.dialects.postgresql import insert
+
+from ingest_months import download_month
 
 
-def download_month(year, month, directory):
-    """Reuse a prepared file, or download it to this run's temporary directory."""
-    filename = f"yellow_tripdata_{year}-{month:02d}.parquet"
-    prepared_file = Path("data") / filename
-    if prepared_file.is_file():
-        print(f"Using prepared file: {prepared_file}")
-        return prepared_file
+# These fields define what this exercise considers the same trip record.
+HASH_COLUMNS = [
+    "vendor_id", "pickup_time", "dropoff_time", "pickup_zone_id",
+    "dropoff_zone_id", "fare_amount_usd", "trip_distance_miles",
+]
 
-    url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{filename}"
-    path = Path(directory) / filename
-    print(f"Downloading {url}")
-    with urlopen(url, timeout=60) as response, path.open("wb") as output:
-        shutil.copyfileobj(response, output, length=1024 * 1024)
-    return path
+
+def row_hash(values):
+    # JSON preserves field boundaries and distinguishes missing values from text.
+    values = [None if pd.isna(value) else
+              value.isoformat() if isinstance(value, pd.Timestamp) else
+              int(value) if isinstance(value, Integral) else value
+              for value in values]
+    encoded = json.dumps(values, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def insert_new_rows(table, connection, keys, data_iter):
+    """pandas calls this function for each group of up to 1,000 rows."""
+    rows = [dict(zip(keys, row)) for row in data_iter]
+    statement = insert(table.table).values(rows)
+    statement = statement.on_conflict_do_nothing(index_elements=["row_hash"])
+    statement = statement.returning(table.table.c.row_hash)
+    return len(connection.execute(statement).fetchall())
 
 
 def load_month(file_path, year, month, engine):
@@ -41,43 +56,40 @@ def load_month(file_path, year, month, engine):
         "total_amount": "total_amount_usd",
     }
     source_month = date(year, month, 1)
-    schema = (Path(__file__).parent / "sql/schema-monthly.sql").read_text()
+    schema = (Path(__file__).parent / "sql/schema-hashed.sql").read_text()
     with pq.ParquetFile(file_path) as source:
         expected = source.metadata.num_rows
         if expected == 0 or not set(columns).issubset(source.schema_arrow.names):
             raise ValueError("The source is empty or lacks required yellow taxi columns.")
 
-        # Commit one whole month at a time. A failed month restores its earlier rows.
+        # Commit all new rows for this file together; roll back on failure.
         with engine.begin() as connection:
-            # In this transaction, wait at most 10 seconds to acquire a database lock.
-            # This limits lock waiting, not the total ingestion time.
+            # Limit waiting for locks, not the total ingestion time.
             connection.execute(text("SET LOCAL lock_timeout = '10s'"))
             connection.execute(text(schema))
-            # Prevent two simultaneous jobs from replacing the same month together.
-            connection.execute(text("LOCK TABLE public.taxi_trips_monthly IN SHARE ROW EXCLUSIVE MODE"))
-            connection.execute(text(
-                "DELETE FROM public.taxi_trips_monthly WHERE source_month = :month"
-            ), {"month": source_month})
-            loaded = 0
-
-            # Unlike next(...), this loop visits ALL batches in the file.
+            processed = inserted = 0
             for batch in source.iter_batches(batch_size=10_000, columns=list(columns)):
                 trips = batch.to_pandas().rename(columns=columns)
                 for name in ("vendor_id", "passenger_count", "pickup_zone_id", "dropoff_zone_id"):
                     trips[name] = trips[name].astype("Int64")
+                # Normalize measure types so 10 and 10.0 produce the same key.
+                for name in ("fare_amount_usd", "trip_distance_miles"):
+                    trips[name] = trips[name].astype("float64")
+                trips["row_hash"] = [row_hash(row) for row in
+                    trips[HASH_COLUMNS].itertuples(index=False, name=None)]
                 trips["source_month"] = source_month
-                trips.to_sql("taxi_trips_monthly", connection, schema="public",
-                             if_exists="append", index=False, chunksize=1_000)
-                loaded += len(trips)
-                print(f"{source_month:%Y-%m}: wrote {loaded:,}/{expected:,} rows (not committed yet)")
-
-            actual = connection.scalar(text(
-                "SELECT COUNT(*) FROM public.taxi_trips_monthly WHERE source_month = :month"
-            ), {"month": source_month})
-            if loaded != expected or actual != expected:
-                raise ValueError("Loaded count does not match the source file; rolling back this month.")
-    print(f"Committed {source_month:%Y-%m}: {loaded:,} rows")
-    return loaded
+                inserted += trips.to_sql(
+                    "taxi_trips_hashed", connection, schema="public",
+                    if_exists="append", index=False, chunksize=1_000,
+                    method=insert_new_rows,
+                )
+                processed += len(trips)
+                print(f"{source_month:%Y-%m}: read {processed:,}/{expected:,} rows (not committed yet)")
+            if processed != expected:
+                raise ValueError("Not all source rows were processed; rolling back.")
+    print(f"Committed {source_month:%Y-%m}: read {processed:,}, inserted {inserted:,}, "
+          f"skipped {processed - inserted:,}")
+    return inserted
 
 
 def main():

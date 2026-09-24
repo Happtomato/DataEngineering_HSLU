@@ -4,7 +4,7 @@ Before class: [download checklist](../../preparation/week-02.md). It preloads th
 
 [Week 2 introduction](../../weeks/02-postgresql-and-ingestion/README.md) · [Part 2 walkthrough](../../weeks/02-postgresql-and-ingestion/part-2-postgres-and-pgadmin.md)
 
-This example provides PostgreSQL and pgAdmin. [Part 3: Python ingestion](../../weeks/02-postgresql-and-ingestion/part-3-python-ingestion.md) and its original Python scripts are now drafted. The ingestion image build has been verified after correcting the dependency lock. Full database-loading validation remains pending.
+This example provides PostgreSQL, pgAdmin, and Python ingestion scripts. Follow [Part 3: Python ingestion](../../weeks/02-postgresql-and-ingestion/part-3-python-ingestion.md) to inspect a source file, load a sample, and then ingest complete monthly files.
 
 Requirements: a running Docker engine and Docker Compose v2 with support for `up --wait`. Docker Desktop includes both. Use a terminal in this directory.
 
